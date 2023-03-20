@@ -1,5 +1,6 @@
 add_example_executable(editor
     editor.cpp
+    editor_modules_list.h
     utilities/builders.h
     utilities/drawing.h
     utilities/widgets.h

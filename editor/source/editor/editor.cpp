@@ -1,8 +1,10 @@
 #include <application.h>
+#include "editor_modules_list.h"
 #include "utilities/builders.h"
 #include "utilities/widgets.h"
 
 #include <imgui_node_editor.h>
+
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui_internal.h>
@@ -12,7 +14,6 @@
 #include <map>
 #include <algorithm>
 #include <utility>
-
 
 static inline ImRect ImGui_GetItemRect()
 {
@@ -93,6 +94,19 @@ struct Pin
     }
 };
 
+
+struct BlueprintLibraryNode {
+    EditorNodeTypes EngineType;
+    std::string Filter;
+    std::string Name;
+    std::vector<EditorArgsTypes> InputArgsTypes;
+    std::vector<EditorArgsTypes> OutputArgsTypes;
+    std::vector<std::string> InputArgsNames;
+    std::vector<std::string> OutputArgsNames;
+};
+
+static std::vector<BlueprintLibraryNode> BlueprintLibrary;
+
 struct Node
 {
     ed::NodeId ID;
@@ -147,7 +161,7 @@ static bool Splitter(bool split_vertically, float thickness, float* size1, float
     return SplitterBehavior(bb, id, split_vertically ? ImGuiAxis_X : ImGuiAxis_Y, size1, size2, min_size1, min_size2, 0.0f);
 }
 
-struct Example:
+struct Editor:
     public Application
 {
     using Application::Application;
@@ -492,13 +506,13 @@ struct Example:
     {
         ed::Config config;
 
-        config.SettingsFile = "Blueprints.json";
+        config.SettingsFile = "Editor.json";
 
         config.UserPointer = this;
 
         config.LoadNodeSettings = [](ed::NodeId nodeId, char* data, void* userPointer) -> size_t
         {
-            auto self = static_cast<Example*>(userPointer);
+            auto self = static_cast<Editor*>(userPointer);
 
             auto node = self->FindNode(nodeId);
             if (!node)
@@ -511,7 +525,7 @@ struct Example:
 
         config.SaveNodeSettings = [](ed::NodeId nodeId, const char* data, size_t size, ed::SaveReasonFlags reason, void* userPointer) -> bool
         {
-            auto self = static_cast<Example*>(userPointer);
+            auto self = static_cast<Editor*>(userPointer);
 
             auto node = self->FindNode(nodeId);
             if (!node)
@@ -1812,10 +1826,35 @@ struct Example:
 
 int Main(int argc, char** argv)
 {
-    Example exampe("Blueprints", argc, argv);
+    Editor editor("Editor", argc, argv);
 
-    if (exampe.Create())
-        return exampe.Run();
+    // init library
+    {
+#define GDR_BLUEPRINT_NODE(type, filter, name, number_of_input_args, number_of_output_args, input_args_types, output_args_types, input_args_names, output_args_names) \
+        { \
+          BlueprintLibraryNode newNode;\
+          newNode.EngineType = type;\
+          newNode.Filter = filter;\
+          newNode.Name = name;\
+          newNode.InputArgsNames = input_args_names;\
+          newNode.OutputArgsNames = output_args_names;\
+          EditorArgsTypes input_args[std::max(number_of_input_args, 1)] = input_args_types;\
+          EditorArgsTypes output_args[std::max(number_of_output_args, 1)] = output_args_types;\
+          for (int i = 0; i < number_of_input_args; i++)\
+              newNode.InputArgsTypes.push_back(input_args[i]); \
+          for (int i = 0; i < number_of_output_args; i++)\
+              newNode.OutputArgsTypes.push_back(output_args[i]); \
+          BlueprintLibrary.push_back(newNode); \
+        };
+
+        GDR_BLUEPRINT_LIST
+
+#undef GDR_BLUEPRINT_NODE
+    }
+
+
+    if (editor.Create())
+        return editor.Run();
 
     return 0;
 }
