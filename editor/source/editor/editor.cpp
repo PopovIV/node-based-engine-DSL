@@ -73,10 +73,10 @@ struct Pin
     ed::PinId   ID;
     ::Node*     Node;
     std::string Name;
-    PinType     Type;
+    EditorArgsTypes     Type;
     PinKind     Kind;
 
-    Pin(int id, const char* name, PinType type):
+    Pin(int id, const char* name, EditorArgsTypes type):
         ID(id), Node(nullptr), Name(name), Type(type), Kind(PinKind::Input)
     {
     }
@@ -98,7 +98,7 @@ static std::vector<BlueprintLibraryNode> BlueprintLibrary;
 struct Node
 {
     ed::NodeId ID;
-    std::string Name;
+    BlueprintLibraryNode EngineNode;
     std::vector<Pin> Inputs;
     std::vector<Pin> Outputs;
     ImColor Color;
@@ -108,8 +108,8 @@ struct Node
     std::string State;
     std::string SavedState;
 
-    Node(int id, const char* name, ImColor color = ImColor(255, 255, 255)):
-        ID(id), Name(name), Color(color), Type(NodeType::Blueprint), Size(0, 0)
+    Node(int id, BlueprintLibraryNode engineNode, ImColor color = ImColor(255, 255, 255)):
+        ID(id), EngineNode(engineNode), Color(color), Type(NodeType::Blueprint), Size(0, 0)
     {
     }
 };
@@ -336,20 +336,47 @@ struct Editor:
         }
     }
 
-    ImColor GetIconColor(PinType type)
+    ImColor GetIconColor(EditorArgsTypes type)
     {
         switch (type)
         {
             default:
-            case PinType::Flow:     return ImColor(255, 255, 255);
-            case PinType::Bool:     return ImColor(220,  48,  48);
-            case PinType::Int:      return ImColor( 68, 201, 156);
-            case PinType::Float:    return ImColor(147, 226,  74);
-            case PinType::String:   return ImColor(124,  21, 153);
-            case PinType::Object:   return ImColor( 51, 150, 215);
-            case PinType::Function: return ImColor(218,   0, 183);
-            case PinType::Delegate: return ImColor(255,  48,  48);
+            case EditorArgsTypes::editor_arg_float:       return ImColor(255, 255, 255);
+            case EditorArgsTypes::editor_arg_float2:      return ImColor(220,  48,  48);
+            case EditorArgsTypes::editor_arg_float3:      return ImColor( 68, 201, 156);
+            case EditorArgsTypes::editor_arg_float4:      return ImColor(147, 226,  74);
+            case EditorArgsTypes::editor_arg_gdr_index:   return ImColor(124,  21, 153);
+            case EditorArgsTypes::editor_arg_matr:        return ImColor( 51, 150, 215);
+            case EditorArgsTypes::editor_arg_none:        return ImColor(218, 0, 183);
+            case EditorArgsTypes::editor_arg_string:      return ImColor(255, 48, 48);
         }
+    };
+
+    ImColor GetNodeColor(std::string str)
+    {
+        if (str == "Event") {
+            return ImColor(68, 201, 156);
+        }
+        else if (str == "Time") {
+            return ImColor(147, 226, 74);
+        }
+        else if (str == "Model") {
+            return ImColor(124, 21, 153);
+        }
+        else if (str == "Animation") {
+            return ImColor(51, 150, 215);
+        }
+        else if (str == "Texture") {
+            return ImColor(218, 0, 183);
+        }
+        else if (str == "Math") {
+            return ImColor(255, 48, 48);
+        }
+        else if (str == "Workflow") {
+            return ImColor(128, 195, 248);
+        }
+
+        return ImColor(255, 255, 255);
     };
 
     void DrawPinIcon(const Pin& pin, bool connected, int alpha)
@@ -359,14 +386,14 @@ struct Editor:
         color.Value.w = alpha / 255.0f;
         switch (pin.Type)
         {
-            case PinType::Flow:     iconType = IconType::Flow;   break;
-            case PinType::Bool:     iconType = IconType::Circle; break;
-            case PinType::Int:      iconType = IconType::Circle; break;
-            case PinType::Float:    iconType = IconType::Circle; break;
-            case PinType::String:   iconType = IconType::Circle; break;
-            case PinType::Object:   iconType = IconType::Circle; break;
-            case PinType::Function: iconType = IconType::Circle; break;
-            case PinType::Delegate: iconType = IconType::Square; break;
+            case EditorArgsTypes::editor_arg_float:       iconType = IconType::Square;   break;
+            case EditorArgsTypes::editor_arg_float2:      iconType = IconType::Square;   break;
+            case EditorArgsTypes::editor_arg_float3:      iconType = IconType::Square;   break;
+            case EditorArgsTypes::editor_arg_float4:      iconType = IconType::Square;   break;
+            case EditorArgsTypes::editor_arg_gdr_index:   iconType = IconType::Circle; break;
+            case EditorArgsTypes::editor_arg_matr:        iconType = IconType::RoundSquare; break;
+            case EditorArgsTypes::editor_arg_none:        iconType = IconType::Flow;   break;
+            case EditorArgsTypes::editor_arg_string:      iconType = IconType::Diamond; break;
             default:
                 return;
         }
@@ -513,7 +540,7 @@ struct Editor:
             }
 
             bool isSelected = std::find(selectedNodes.begin(), selectedNodes.end(), node.ID) != selectedNodes.end();
-            if (ImGui::Selectable((node.Name + "##" + std::to_string(reinterpret_cast<uintptr_t>(node.ID.AsPointer()))).c_str(), &isSelected))
+            if (ImGui::Selectable((node.EngineNode.Name + "##" + std::to_string(reinterpret_cast<uintptr_t>(node.ID.AsPointer()))).c_str(), &isSelected))
             {
                 if (io.KeyCtrl)
                 {
@@ -672,55 +699,55 @@ struct Editor:
 
                 const auto isSimple = node.Type == NodeType::Simple;
 
-                bool hasOutputDelegates = false;
-                for (auto& output : node.Outputs)
-                    if (output.Type == PinType::Delegate)
-                        hasOutputDelegates = true;
+                //bool hasOutputDelegates = false;
+                //for (auto& output : node.Outputs)
+                //    if (output.Type == PinType::Delegate)
+                //        hasOutputDelegates = true;
 
                 builder.Begin(node.ID);
                     if (!isSimple)
                     {
                         builder.Header(node.Color);
                             ImGui::Spring(0);
-                            ImGui::TextUnformatted(node.Name.c_str());
+                            ImGui::TextUnformatted(node.EngineNode.Name.c_str());
                             ImGui::Spring(1);
                             ImGui::Dummy(ImVec2(0, 28));
-                            if (hasOutputDelegates)
-                            {
-                                ImGui::BeginVertical("delegates", ImVec2(0, 28));
-                                ImGui::Spring(1, 0);
-                                for (auto& output : node.Outputs)
-                                {
-                                    if (output.Type != PinType::Delegate)
-                                        continue;
+                            //if (hasOutputDelegates)
+                            //{
+                            //    ImGui::BeginVertical("delegates", ImVec2(0, 28));
+                            //    ImGui::Spring(1, 0);
+                            //    for (auto& output : node.Outputs)
+                            //    {
+                            //        if (output.Type != PinType::Delegate)
+                            //            continue;
 
-                                    auto alpha = ImGui::GetStyle().Alpha;
-                                    if (newLinkPin && !CanCreateLink(newLinkPin, &output) && &output != newLinkPin)
-                                        alpha = alpha * (48.0f / 255.0f);
+                            //        auto alpha = ImGui::GetStyle().Alpha;
+                            //        if (newLinkPin && !CanCreateLink(newLinkPin, &output) && &output != newLinkPin)
+                            //            alpha = alpha * (48.0f / 255.0f);
 
-                                    ed::BeginPin(output.ID, ed::PinKind::Output);
-                                    ed::PinPivotAlignment(ImVec2(1.0f, 0.5f));
-                                    ed::PinPivotSize(ImVec2(0, 0));
-                                    ImGui::BeginHorizontal(output.ID.AsPointer());
-                                    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, alpha);
-                                    if (!output.Name.empty())
-                                    {
-                                        ImGui::TextUnformatted(output.Name.c_str());
-                                        ImGui::Spring(0);
-                                    }
-                                    DrawPinIcon(output, IsPinLinked(output.ID), (int)(alpha * 255));
-                                    ImGui::Spring(0, ImGui::GetStyle().ItemSpacing.x / 2);
-                                    ImGui::EndHorizontal();
-                                    ImGui::PopStyleVar();
-                                    ed::EndPin();
+                            //        ed::BeginPin(output.ID, ed::PinKind::Output);
+                            //        ed::PinPivotAlignment(ImVec2(1.0f, 0.5f));
+                            //        ed::PinPivotSize(ImVec2(0, 0));
+                            //        ImGui::BeginHorizontal(output.ID.AsPointer());
+                            //        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, alpha);
+                            //        if (!output.Name.empty())
+                            //        {
+                            //            ImGui::TextUnformatted(output.Name.c_str());
+                            //            ImGui::Spring(0);
+                            //        }
+                            //        DrawPinIcon(output, IsPinLinked(output.ID), (int)(alpha * 255));
+                            //        ImGui::Spring(0, ImGui::GetStyle().ItemSpacing.x / 2);
+                            //        ImGui::EndHorizontal();
+                            //        ImGui::PopStyleVar();
+                            //        ed::EndPin();
 
-                                    //DrawItemRect(ImColor(255, 0, 0));
-                                }
-                                ImGui::Spring(1, 0);
-                                ImGui::EndVertical();
-                                ImGui::Spring(0, ImGui::GetStyle().ItemSpacing.x / 2);
-                            }
-                            else
+                            //        //DrawItemRect(ImColor(255, 0, 0));
+                            //    }
+                            //    ImGui::Spring(1, 0);
+                            //    ImGui::EndVertical();
+                            //    ImGui::Spring(0, ImGui::GetStyle().ItemSpacing.x / 2);
+                            //}
+                            //else
                                 ImGui::Spring(0);
                         builder.EndHeader();
                     }
@@ -740,11 +767,11 @@ struct Editor:
                             ImGui::TextUnformatted(input.Name.c_str());
                             ImGui::Spring(0);
                         }
-                        if (input.Type == PinType::Bool)
-                        {
-                             ImGui::Button("Hello");
-                             ImGui::Spring(0);
-                        }
+                        //if (input.Type == PinType::Bool)
+                        //{
+                        //     ImGui::Button("Hello");
+                        //     ImGui::Spring(0);
+                        //}
                         ImGui::PopStyleVar();
                         builder.EndInput();
                     }
@@ -754,14 +781,14 @@ struct Editor:
                         builder.Middle();
 
                         ImGui::Spring(1, 0);
-                        ImGui::TextUnformatted(node.Name.c_str());
+                        ImGui::TextUnformatted(node.EngineNode.Name.c_str());
                         ImGui::Spring(1, 0);
                     }
 
                     for (auto& output : node.Outputs)
                     {
-                        if (!isSimple && output.Type == PinType::Delegate)
-                            continue;
+                        //if (!isSimple && output.Type == PinType::Delegate)
+                        //    continue;
 
                         auto alpha = ImGui::GetStyle().Alpha;
                         if (newLinkPin && !CanCreateLink(newLinkPin, &output) && &output != newLinkPin)
@@ -769,26 +796,26 @@ struct Editor:
 
                         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, alpha);
                         builder.Output(output.ID);
-                        if (output.Type == PinType::String)
-                        {
-                            static char buffer[128] = "Edit Me\nMultiline!";
-                            static bool wasActive = false;
+                        //if (output.Type == PinType::String)
+                        //{
+                        //    static char buffer[128] = "Edit Me\nMultiline!";
+                        //    static bool wasActive = false;
 
-                            ImGui::PushItemWidth(100.0f);
-                            ImGui::InputText("##edit", buffer, 127);
-                            ImGui::PopItemWidth();
-                            if (ImGui::IsItemActive() && !wasActive)
-                            {
-                                ed::EnableShortcuts(false);
-                                wasActive = true;
-                            }
-                            else if (!ImGui::IsItemActive() && wasActive)
-                            {
-                                ed::EnableShortcuts(true);
-                                wasActive = false;
-                            }
-                            ImGui::Spring(0);
-                        }
+                        //    ImGui::PushItemWidth(100.0f);
+                        //    ImGui::InputText("##edit", buffer, 127);
+                        //    ImGui::PopItemWidth();
+                        //    if (ImGui::IsItemActive() && !wasActive)
+                        //    {
+                        //        ed::EnableShortcuts(false);
+                        //        wasActive = true;
+                        //    }
+                        //    else if (!ImGui::IsItemActive() && wasActive)
+                        //    {
+                        //        ed::EnableShortcuts(true);
+                        //        wasActive = false;
+                        //    }
+                        //    ImGui::Spring(0);
+                        //}
                         if (!output.Name.empty())
                         {
                             ImGui::Spring(0);
@@ -868,7 +895,7 @@ struct Editor:
                 ImGui::BeginVertical("content", ImVec2(0.0f, 0.0f));
                 ImGui::Dummy(ImVec2(160, 0));
                 ImGui::Spring(1);
-                ImGui::TextUnformatted(node.Name.c_str());
+                ImGui::TextUnformatted(node.EngineNode.Name.c_str());
                 ImGui::Spring(1);
                 ImGui::EndVertical();
                 auto contentRect = ImGui_GetItemRect();
@@ -1023,7 +1050,7 @@ struct Editor:
                 ImGui::Dummy(ImVec2(160, 0));
                 ImGui::Spring(1);
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));
-                ImGui::TextUnformatted(node.Name.c_str());
+                ImGui::TextUnformatted(node.EngineNode.Name.c_str());
                 ImGui::PopStyleColor();
                 ImGui::Spring(1);
                 ImGui::EndVertical();
@@ -1099,7 +1126,7 @@ struct Editor:
                 ImGui::BeginVertical("content");
                 ImGui::BeginHorizontal("horizontal");
                 ImGui::Spring(1);
-                ImGui::TextUnformatted(node.Name.c_str());
+                ImGui::TextUnformatted(node.EngineNode.Name.c_str());
                 ImGui::Spring(1);
                 ImGui::EndHorizontal();
                 ed::Group(node.Size);
@@ -1121,7 +1148,7 @@ struct Editor:
 
                     ImGui::SetCursorScreenPos(min - ImVec2(-8, ImGui::GetTextLineHeightWithSpacing() + 4));
                     ImGui::BeginGroup();
-                    ImGui::TextUnformatted(node.Name.c_str());
+                    ImGui::TextUnformatted(node.EngineNode.Name.c_str());
                     ImGui::EndGroup();
 
                     auto drawList = ed::GetHintBackgroundDrawList();
@@ -1354,8 +1381,16 @@ struct Editor:
 
             Node* node = nullptr;
             for (auto& f : BlueprintLibrary) {
-                if (ImGui::MenuItem(f.Name.c_str()))
-                    int i = 0;
+                if (ImGui::MenuItem(f.Name.c_str())) {
+                    m_Nodes.emplace_back(GetNextId(), f, GetNodeColor(f.Filter));
+                    for (int i = 0; i < f.InputArgsNames.size(); i++) {
+                        m_Nodes.back().Inputs.emplace_back(GetNextId(), f.InputArgsNames[i].c_str(), f.InputArgsTypes[i]);
+                    }
+                    for (int i = 0; i < f.OutputArgsNames.size(); i++) {
+                        m_Nodes.back().Outputs.emplace_back(GetNextId(), f.OutputArgsNames[i].c_str(), f.OutputArgsTypes[i]);
+                    }
+                    BuildNode(&m_Nodes.back());
+                }
             }
 
             if (node)
