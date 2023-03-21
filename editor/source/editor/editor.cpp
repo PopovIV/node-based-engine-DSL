@@ -99,6 +99,7 @@ struct Node
 {
     ed::NodeId ID;
     BlueprintLibraryNode EngineNode;
+    std::string Name;
     std::vector<Pin> Inputs;
     std::vector<Pin> Outputs;
     ImColor Color;
@@ -109,7 +110,7 @@ struct Node
     std::string SavedState;
 
     Node(int id, BlueprintLibraryNode engineNode, ImColor color = ImColor(255, 255, 255)):
-        ID(id), EngineNode(engineNode), Color(color), Type(NodeType::Blueprint), Size(0, 0)
+        ID(id), EngineNode(engineNode), Color(color), Type(NodeType::Blueprint), Size(0, 0), Name(engineNode.Filter + ": " + engineNode.Name)
     {
     }
 };
@@ -341,42 +342,29 @@ struct Editor:
         switch (type)
         {
             default:
-            case EditorArgsTypes::editor_arg_float:       return ImColor(255, 255, 255);
+            case EditorArgsTypes::editor_arg_float:       return ImColor(218, 0, 183);
             case EditorArgsTypes::editor_arg_float2:      return ImColor(220,  48,  48);
             case EditorArgsTypes::editor_arg_float3:      return ImColor( 68, 201, 156);
             case EditorArgsTypes::editor_arg_float4:      return ImColor(147, 226,  74);
             case EditorArgsTypes::editor_arg_gdr_index:   return ImColor(124,  21, 153);
             case EditorArgsTypes::editor_arg_matr:        return ImColor( 51, 150, 215);
-            case EditorArgsTypes::editor_arg_none:        return ImColor(218, 0, 183);
+            case EditorArgsTypes::editor_arg_none:        return ImColor(255, 255, 255);
             case EditorArgsTypes::editor_arg_string:      return ImColor(255, 48, 48);
         }
     };
 
-    ImColor GetNodeColor(std::string str)
+    ImColor GetNodeColor(EditorNodeTypes type)
     {
-        if (str == "Event") {
-            return ImColor(68, 201, 156);
-        }
-        else if (str == "Time") {
-            return ImColor(147, 226, 74);
-        }
-        else if (str == "Model") {
-            return ImColor(124, 21, 153);
-        }
-        else if (str == "Animation") {
-            return ImColor(51, 150, 215);
-        }
-        else if (str == "Texture") {
-            return ImColor(218, 0, 183);
-        }
-        else if (str == "Math") {
-            return ImColor(255, 48, 48);
-        }
-        else if (str == "Workflow") {
-            return ImColor(128, 195, 248);
+        switch (type)
+        {
+        default:
+        case EditorNodeTypes::editor_node_event:      return ImColor(220, 48, 48);
+        case EditorNodeTypes::editor_node_function:      return ImColor(68, 201, 156);
+        case EditorNodeTypes::editor_node_none:     return ImColor(147, 226, 74);
+        case EditorNodeTypes::editor_node_workflow: return ImColor(124, 21, 153);
+
         }
 
-        return ImColor(255, 255, 255);
     };
 
     void DrawPinIcon(const Pin& pin, bool connected, int alpha)
@@ -540,7 +528,7 @@ struct Editor:
             }
 
             bool isSelected = std::find(selectedNodes.begin(), selectedNodes.end(), node.ID) != selectedNodes.end();
-            if (ImGui::Selectable((node.EngineNode.Name + "##" + std::to_string(reinterpret_cast<uintptr_t>(node.ID.AsPointer()))).c_str(), &isSelected))
+            if (ImGui::Selectable((node.Name + "##" + std::to_string(reinterpret_cast<uintptr_t>(node.ID.AsPointer()))).c_str(), &isSelected))
             {
                 if (io.KeyCtrl)
                 {
@@ -709,7 +697,7 @@ struct Editor:
                     {
                         builder.Header(node.Color);
                             ImGui::Spring(0);
-                            ImGui::TextUnformatted(node.EngineNode.Name.c_str());
+                            ImGui::TextUnformatted(node.Name.c_str());
                             ImGui::Spring(1);
                             ImGui::Dummy(ImVec2(0, 28));
                             //if (hasOutputDelegates)
@@ -781,7 +769,7 @@ struct Editor:
                         builder.Middle();
 
                         ImGui::Spring(1, 0);
-                        ImGui::TextUnformatted(node.EngineNode.Name.c_str());
+                        ImGui::TextUnformatted(node.Name.c_str());
                         ImGui::Spring(1, 0);
                     }
 
@@ -895,7 +883,7 @@ struct Editor:
                 ImGui::BeginVertical("content", ImVec2(0.0f, 0.0f));
                 ImGui::Dummy(ImVec2(160, 0));
                 ImGui::Spring(1);
-                ImGui::TextUnformatted(node.EngineNode.Name.c_str());
+                ImGui::TextUnformatted(node.Name.c_str());
                 ImGui::Spring(1);
                 ImGui::EndVertical();
                 auto contentRect = ImGui_GetItemRect();
@@ -1050,7 +1038,7 @@ struct Editor:
                 ImGui::Dummy(ImVec2(160, 0));
                 ImGui::Spring(1);
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));
-                ImGui::TextUnformatted(node.EngineNode.Name.c_str());
+                ImGui::TextUnformatted(node.Name.c_str());
                 ImGui::PopStyleColor();
                 ImGui::Spring(1);
                 ImGui::EndVertical();
@@ -1126,7 +1114,7 @@ struct Editor:
                 ImGui::BeginVertical("content");
                 ImGui::BeginHorizontal("horizontal");
                 ImGui::Spring(1);
-                ImGui::TextUnformatted(node.EngineNode.Name.c_str());
+                ImGui::TextUnformatted(node.Name.c_str());
                 ImGui::Spring(1);
                 ImGui::EndHorizontal();
                 ed::Group(node.Size);
@@ -1148,7 +1136,7 @@ struct Editor:
 
                     ImGui::SetCursorScreenPos(min - ImVec2(-8, ImGui::GetTextLineHeightWithSpacing() + 4));
                     ImGui::BeginGroup();
-                    ImGui::TextUnformatted(node.EngineNode.Name.c_str());
+                    ImGui::TextUnformatted(node.Name.c_str());
                     ImGui::EndGroup();
 
                     auto drawList = ed::GetHintBackgroundDrawList();
@@ -1381,8 +1369,12 @@ struct Editor:
 
             Node* node = nullptr;
             for (auto& f : BlueprintLibrary) {
-                if (ImGui::MenuItem(f.Name.c_str())) {
-                    m_Nodes.emplace_back(GetNextId(), f, GetNodeColor(f.Filter));
+                if (ImGui::MenuItem((f.Filter + ": " + f.Name).c_str())) {
+                    m_Nodes.emplace_back(GetNextId(), f, GetNodeColor(f.EngineType));
+                    if (f.EngineType != EditorNodeTypes::editor_node_event) {
+                        m_Nodes.back().Inputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
+                    }
+                    m_Nodes.back().Outputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
                     for (int i = 0; i < f.InputArgsNames.size(); i++) {
                         m_Nodes.back().Inputs.emplace_back(GetNextId(), f.InputArgsNames[i].c_str(), f.InputArgsTypes[i]);
                     }
