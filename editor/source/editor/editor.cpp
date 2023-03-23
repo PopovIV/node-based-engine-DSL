@@ -479,6 +479,7 @@ struct Editor:
         ImGui::Spring(0.0f);
         if (ImGui::Button("Show Flow"))
         {
+            // TBD: Flow should show only "white" links.
             for (auto& link : m_Links)
                 ed::Flow(link.ID);
         }
@@ -627,6 +628,7 @@ struct Editor:
         for (int i = 0; i < linkCount; ++i) ImGui::Text("Link (%p)", selectedLinks[i].AsPointer());
         ImGui::Unindent();
 
+        // TBD: Flow should show only "white" links.
         if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Z)))
             for (auto& link : m_Links)
                 ed::Flow(link.ID);
@@ -1209,6 +1211,7 @@ struct Editor:
                                 showLabel("x Incompatible Pin Kind", ImColor(45, 32, 32, 180));
                                 ed::RejectNewItem(ImColor(255, 0, 0), 2.0f);
                             }
+                            // TBD: I think you shouldnt be able to connect to yourself. Cycles are bad.
                             //else if (endPin->Node == startPin->Node)
                             //{
                             //    showLabel("x Cannot connect to self", ImColor(45, 32, 32, 180));
@@ -1235,6 +1238,10 @@ struct Editor:
                     if (ed::QueryNewNode(&pinId))
                     {
                         newLinkPin = FindPin(pinId);
+                        // TBD: then you create a node by dragging a link from some other node pin you should:
+                        // 1) Automatically connect new node to the old one.
+                        // 2) Show Popup only if you drag from a "white" node
+                        // 3) Show popup with "acceptable" nodes. E.g. if you drag from "Output" node you should not show "Event" nodes
                         if (newLinkPin)
                             showLabel("+ Create Node", ImColor(32, 45, 32, 180));
 
@@ -1371,10 +1378,18 @@ struct Editor:
             for (auto& f : BlueprintLibrary) {
                 if (ImGui::MenuItem((f.Filter + ": " + f.Name).c_str())) {
                     m_Nodes.emplace_back(GetNextId(), f, GetNodeColor(f.EngineType));
-                    if (f.EngineType != EditorNodeTypes::editor_node_event) {
-                        m_Nodes.back().Inputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
+                    if (f.EngineType == EditorNodeTypes::editor_node_event) {
+                      m_Nodes.back().Outputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
                     }
-                    m_Nodes.back().Outputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
+                    else if (f.EngineType == EditorNodeTypes::editor_node_function) {
+                      m_Nodes.back().Inputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
+                      m_Nodes.back().Outputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
+                    }
+                    else if (f.EngineType == EditorNodeTypes::editor_node_workflow) {
+                      m_Nodes.back().Inputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
+                      m_Nodes.back().Outputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
+                      m_Nodes.back().Outputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
+                    }
                     for (int i = 0; i < f.InputArgsNames.size(); i++) {
                         m_Nodes.back().Inputs.emplace_back(GetNextId(), f.InputArgsNames[i].c_str(), f.InputArgsTypes[i]);
                     }
@@ -1484,6 +1499,10 @@ struct Editor:
 int Main(int argc, char** argv)
 {
     Editor editor("Editor", argc, argv);
+
+
+    // TBD: I think you should start your editor with all "Event" nodes. Forbid to delete them and add new.
+    // TBD: I think colorful(non-white) inputs should have only 1 link.
 
     // init library
     {
