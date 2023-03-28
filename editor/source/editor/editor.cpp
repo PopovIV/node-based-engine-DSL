@@ -893,7 +893,8 @@ struct Editor: public Application {
                     std::string key = v.first;
                     for (auto& f : BlueprintLibrary[key]) {
                         if (ImGui::MenuItem((f.Name).c_str())) {
-                            m_Nodes.emplace_back(GetNextId(), f, GetNodeColor(f.EngineType));
+                            int nodeId = GetNextId();
+                            m_Nodes.emplace_back(nodeId, f, GetNodeColor(f.EngineType));
                             if (f.EngineType == EditorNodeTypes::editor_node_event) {
                                 m_Nodes.back().Outputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
                             }
@@ -913,6 +914,7 @@ struct Editor: public Application {
                                 m_Nodes.back().Outputs.emplace_back(GetNextId(), f.OutputArgsNames[i].c_str(), f.OutputArgsTypes[i]);
                             }
                             BuildNode(&m_Nodes.back());
+                            ed::SetNodePosition(nodeId, openPopupPosition);
                         }
                     }
                     ImGui::EndMenu();
