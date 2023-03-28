@@ -11,8 +11,8 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # Point CMake where to look for module files.
 list(APPEND CMAKE_MODULE_PATH ${IMGUI_NODE_EDITOR_ROOT_DIR}/misc/cmake-modules)
 
-# Node editor use C++14
-set(CMAKE_CXX_STANDARD            14)
+# Node editor use C++17
+set(CMAKE_CXX_STANDARD            17)
 set(CMAKE_CXX_STANDARD_REQUIRED   YES)
 
 

@@ -12,6 +12,8 @@
 #include <map>
 #include <algorithm>
 #include <utility>
+#include <iostream>
+#include  <any>
 
 static inline ImRect ImGui_GetItemRect() {
     return ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
@@ -59,6 +61,8 @@ struct Pin {
     std::string Name;
     EditorArgsTypes     Type;
     PinKind     Kind;
+
+    std::any a;
 
     Pin(int id, const char* name, EditorArgsTypes type):
         ID(id), Node(nullptr), Name(name), Type(type), Kind(PinKind::Input)
@@ -600,8 +604,6 @@ struct Editor: public Application {
 
         ed::SetCurrentEditor(m_Editor);
 
-        //auto& style = ImGui::GetStyle();
-
     # if 0
         {
             for (auto x = -io.DisplaySize.y; x < io.DisplaySize.x; x += 10.0f)
@@ -658,7 +660,54 @@ struct Editor: public Application {
                          ImGui::TextUnformatted(input.Name.c_str());
                          ImGui::Spring(0);
                     }
- 
+                    //
+                    static char str1[128] = "";
+                    static int i0 = 0;
+                    static float f1 = 0.0f;
+                    static float vec4f[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+                    static float matrRow0[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+                    static float matrRow1[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+                    static float matrRow2[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+                    static float matrRow3[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+                    if (!IsPinLinked(input.ID)) {
+                        int width = 100;
+                        ImGui::PushItemWidth(width);
+                        switch (input.Type) {
+                        case EditorArgsTypes::editor_arg_string:
+                            ImGui::InputText("", str1, IM_ARRAYSIZE(str1));
+                            break;
+                        case EditorArgsTypes::editor_arg_float:
+                            ImGui::InputFloat("", &f1, 0.0f, 0.0f, "%.3e");
+                            break;
+                        case EditorArgsTypes::editor_arg_float2:
+                            ImGui::PushItemWidth(width * 2);
+                            ImGui::InputFloat2("", vec4f);
+                            break;
+                        case EditorArgsTypes::editor_arg_float3:
+                            ImGui::PushItemWidth(width * 3);
+                            ImGui::InputFloat3("", vec4f);
+                            break;
+                        case EditorArgsTypes::editor_arg_float4:
+                            ImGui::PushItemWidth(width * 4);
+                            ImGui::InputFloat4("", vec4f);
+                            break;
+                        case EditorArgsTypes::editor_arg_gdr_index:
+                            ImGui::InputInt("", &i0);
+                            break;
+                        case EditorArgsTypes::editor_arg_matr:
+                            ImGui::PushItemWidth(width * 4);
+                            ImGui::InputFloat4("", matrRow0);
+                            ImGui::InputFloat4("", matrRow1);
+                            ImGui::InputFloat4("", matrRow2);
+                            ImGui::InputFloat4("", matrRow3);
+                            break;
+                        default:
+                            break;
+                        }
+                        ImGui::PopItemWidth();
+                    }
+
                     ImGui::PopStyleVar();
                     builder.EndInput();
                 }
