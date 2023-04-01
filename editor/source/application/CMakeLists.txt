@@ -108,5 +108,3 @@ target_include_directories(application PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/sourc
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${_Application_Sources})
 
 target_sources(application PRIVATE ${_Application_Sources})
-
-set_property(TARGET application PROPERTY FOLDER "examples")

@@ -7,4 +7,7 @@ add_example_executable(editor
     utilities/builders.cpp
     utilities/drawing.cpp
     utilities/widgets.cpp
+    utilities/ImGuiFileBrowser/Dirent/dirent.h
+    utilities/ImGuiFileBrowser/ImGuiFileBrowser.h
+    utilities/ImGuiFileBrowser/ImGuiFileBrowser.cpp
 )

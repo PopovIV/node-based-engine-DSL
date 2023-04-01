@@ -14,6 +14,14 @@
 #include <utility>
 #include <iostream>
 
+#include <fstream>
+#include <external/json.hpp>
+using json = nlohmann::json;
+
+#include "utilities/ImGuiFileBrowser/ImGuiFileBrowser.h"
+imgui_addons::ImGuiFileBrowser file_dialog;
+
+
 static inline ImRect ImGui_GetItemRect() {
     return ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
 }
@@ -437,6 +445,31 @@ struct Editor: public Application {
             showStyleEditor = true;
         }
         ImGui::EndHorizontal();
+
+        ImGui::BeginHorizontal("Json loader", ImVec2(paneWidth, 0));
+        ImGui::Spring(0.0f, 0.0f);
+        if (ImGui::Button("Save")) {
+            ImGui::OpenPopup("Save File");
+        }
+        ImGui::Spring(0.0f);
+        if (ImGui::Button("Load")) {
+            ImGui::OpenPopup("Open File");
+        }
+        if (file_dialog.showFileDialog("Open File", imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(700, 310), ".json"))
+        {
+            std::cout << file_dialog.selected_fn << std::endl;      // The name of the selected file or directory in case of Select Directory dialog mode
+            std::cout << file_dialog.selected_path << std::endl;    // The absolute path to the selected file
+        }
+        if (file_dialog.showFileDialog("Save File", imgui_addons::ImGuiFileBrowser::DialogMode::SAVE, ImVec2(700, 310), ".json"))
+        {
+            std::cout << file_dialog.selected_fn << std::endl;      // The name of the selected file or directory in case of Select Directory dialog mode
+            std::cout << file_dialog.selected_path << std::endl;    // The absolute path to the selected file
+            std::cout << file_dialog.ext << std::endl;              // Access ext separately (For SAVE mode)
+            //Do writing of files based on extension here
+        }
+
+        ImGui::EndHorizontal();
+
         ImGui::Checkbox("Show Ordinals", &m_ShowOrdinals);
 
         if (showStyleEditor) {
@@ -1096,6 +1129,7 @@ int Main(int argc, char** argv)
     for (int i = 1; i < int(EditorArgsTypes::editor_arg_count); i++) {
         PinColorChoser[EditorArgsTypes(i)] = ImColor(128 + rand() % 128, 128 + rand() % 128, 128 + rand() % 128);
     }
+
 
 
     if (editor.Create()) {
