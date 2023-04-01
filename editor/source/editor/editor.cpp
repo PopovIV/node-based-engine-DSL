@@ -13,7 +13,6 @@
 #include <algorithm>
 #include <utility>
 #include <iostream>
-#include  <any>
 
 static inline ImRect ImGui_GetItemRect() {
     return ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
@@ -62,8 +61,6 @@ struct Pin {
     EditorArgsTypes     Type;
     PinKind     Kind;
 
-    std::any a;
-
     Pin(int id, const char* name, EditorArgsTypes type):
         ID(id), Node(nullptr), Name(name), Type(type), Kind(PinKind::Input)
     {
@@ -81,6 +78,7 @@ struct BlueprintLibraryNode {
 };
 
 static std::map<std::string, std::vector<BlueprintLibraryNode>> BlueprintLibrary;
+static std::map<EditorArgsTypes, ImColor> PinColorChoser;
 
 struct Node {
     ed::NodeId ID;
@@ -281,6 +279,21 @@ struct Editor: public Application {
         m_Editor = ed::CreateEditor(&config);
         ed::SetCurrentEditor(m_Editor);
 
+        // Create 4 event nodes 
+        float x = 0.0f;
+        float y = -300.0f;
+        for (auto& f : BlueprintLibrary["Event"]) {
+            int nodeId = GetNextId();
+            m_Nodes.emplace_back(nodeId, f, GetNodeColor(f.EngineType));
+            m_Nodes.back().Outputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
+            BuildNode(&m_Nodes.back());
+            auto pos = ImVec2(x, y);
+            ed::SetNodePosition(nodeId, pos);
+            y += 100.0f;
+        }
+
+        BlueprintLibrary.erase("Event");
+
         m_HeaderBackground = LoadTexture("data/BlueprintBackground.png");
         m_SaveIcon         = LoadTexture("data/ic_save_white_24dp.png");
         m_RestoreIcon      = LoadTexture("data/ic_restore_white_24dp.png");
@@ -304,33 +317,19 @@ struct Editor: public Application {
         }
     }
 
-    ImColor GetIconColor(EditorArgsTypes type) {
-        switch (type) {
-            default:
-            case EditorArgsTypes::editor_arg_float:       return ImColor(218, 0, 183);
-            case EditorArgsTypes::editor_arg_float2:      return ImColor(220,  48,  48);
-            case EditorArgsTypes::editor_arg_float3:      return ImColor( 68, 201, 156);
-            case EditorArgsTypes::editor_arg_float4:      return ImColor(147, 226,  74);
-            case EditorArgsTypes::editor_arg_gdr_index:   return ImColor(124,  21, 153);
-            case EditorArgsTypes::editor_arg_matr:        return ImColor( 51, 150, 215);
-            case EditorArgsTypes::editor_arg_none:        return ImColor(255, 255, 255);
-            case EditorArgsTypes::editor_arg_string:      return ImColor(255, 48, 48);
-        }
-    };
-
     ImColor GetNodeColor(EditorNodeTypes type) {
         switch (type) {
-            default:
+            default:                                      return ImColor(255, 255, 255);
             case EditorNodeTypes::editor_node_event:      return ImColor(220, 48, 48);
-            case EditorNodeTypes::editor_node_function:      return ImColor(68, 201, 156);
-            case EditorNodeTypes::editor_node_none:     return ImColor(147, 226, 74);
-            case EditorNodeTypes::editor_node_workflow: return ImColor(124, 21, 153);
+            case EditorNodeTypes::editor_node_function:   return ImColor(68, 201, 156);
+            case EditorNodeTypes::editor_node_none:       return ImColor(147, 226, 74);
+            case EditorNodeTypes::editor_node_workflow:   return ImColor(124, 21, 153);
         }
     };
 
     void DrawPinIcon(const Pin& pin, bool connected, int alpha) {
         IconType iconType;
-        ImColor  color = GetIconColor(pin.Type);
+        ImColor color = PinColorChoser[pin.Type];
         color.Value.w = alpha / 255.0f;
         switch (pin.Type) {
             case EditorArgsTypes::editor_arg_float:       iconType = IconType::Square;   break;
@@ -342,7 +341,7 @@ struct Editor: public Application {
             case EditorArgsTypes::editor_arg_none:        iconType = IconType::Flow;   break;
             case EditorArgsTypes::editor_arg_string:      iconType = IconType::Diamond; break;
             default:
-                return;
+                iconType = IconType::Square; break;
         }
 
         ax::Widgets::Icon(ImVec2(static_cast<float>(m_PinIconSize), static_cast<float>(m_PinIconSize)), iconType, connected, color, ImColor(32, 32, 32, alpha));
@@ -427,9 +426,10 @@ struct Editor: public Application {
         }
         ImGui::Spring(0.0f);
         if (ImGui::Button("Show Flow")) {
-            // TBD: Flow should show only "white" links.
             for (auto& link : m_Links) {
-                ed::Flow(link.ID);
+                if (FindPin(link.StartPinID)->Type == EditorArgsTypes::editor_arg_none) {
+                    ed::Flow(link.ID);
+                }
             }
         }
         ImGui::Spring();
@@ -581,7 +581,6 @@ struct Editor: public Application {
         for (int i = 0; i < linkCount; ++i) ImGui::Text("Link (%p)", selectedLinks[i].AsPointer());
         ImGui::Unindent();
 
-        // TBD: Flow should show only "white" links.
         if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Z))) {
             for (auto& link : m_Links) {
                 ed::Flow(link.ID);
@@ -670,8 +669,9 @@ struct Editor: public Application {
                     static float matrRow1[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
                     static float matrRow2[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
                     static float matrRow3[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+                    ImGui::AlignTextToFramePadding();
                     if (!IsPinLinked(input.ID)) {
-                        int width = 100;
+                        float width = 100.0f;
                         ImGui::PushItemWidth(width);
                         switch (input.Type) {
                         case EditorArgsTypes::editor_arg_string:
@@ -692,9 +692,6 @@ struct Editor: public Application {
                             ImGui::PushItemWidth(width * 4);
                             ImGui::InputFloat4("", vec4f);
                             break;
-                        case EditorArgsTypes::editor_arg_gdr_index:
-                            ImGui::InputInt("", &i0);
-                            break;
                         case EditorArgsTypes::editor_arg_matr:
                             ImGui::PushItemWidth(width * 4);
                             ImGui::InputFloat4("", matrRow0);
@@ -702,7 +699,11 @@ struct Editor: public Application {
                             ImGui::InputFloat4("", matrRow2);
                             ImGui::InputFloat4("", matrRow3);
                             break;
+                        case EditorArgsTypes::editor_arg_none:
+                            break;
+                        case EditorArgsTypes::editor_arg_gdr_index:
                         default:
+                            ImGui::InputInt("", &i0);
                             break;
                         }
                         ImGui::PopItemWidth();
@@ -776,12 +777,11 @@ struct Editor: public Application {
                                 showLabel("x Incompatible Pin Kind", ImColor(45, 32, 32, 180));
                                 ed::RejectNewItem(ImColor(255, 0, 0), 2.0f);
                             }
-                            // TBD: I think you shouldnt be able to connect to yourself. Cycles are bad.
-                            //else if (endPin->Node == startPin->Node)
-                            //{
-                            //    showLabel("x Cannot connect to self", ImColor(45, 32, 32, 180));
-                            //    ed::RejectNewItem(ImColor(255, 0, 0), 1.0f);
-                            //}
+                            else if (endPin->Node == startPin->Node)
+                            {
+                                showLabel("x Cannot connect to self", ImColor(45, 32, 32, 180));
+                                ed::RejectNewItem(ImColor(255, 0, 0), 1.0f);
+                            }
                             else if (endPin->Type != startPin->Type) {
                                 showLabel("x Incompatible Pin Type", ImColor(45, 32, 32, 180));
                                 ed::RejectNewItem(ImColor(255, 128, 128), 1.0f);
@@ -790,7 +790,7 @@ struct Editor: public Application {
                                 showLabel("+ Create Link", ImColor(32, 45, 32, 180));
                                 if (ed::AcceptNewItem(ImColor(128, 255, 128), 4.0f)) {
                                     m_Links.emplace_back(Link(GetNextId(), startPinId, endPinId));
-                                    m_Links.back().Color = GetIconColor(startPin->Type);
+                                    m_Links.back().Color = PinColorChoser[startPin->Type];
                                 }
                             }
                         }
@@ -799,21 +799,20 @@ struct Editor: public Application {
                     ed::PinId pinId = 0;
                     if (ed::QueryNewNode(&pinId)) {
                         newLinkPin = FindPin(pinId);
-                        // TBD: then you create a node by dragging a link from some other node pin you should:
-                        // 1) Automatically connect new node to the old one.
-                        // 2) Show Popup only if you drag from a "white" node
-                        // 3) Show popup with "acceptable" nodes. E.g. if you drag from "Output" node you should not show "Event" nodes
-                        if (newLinkPin) {
-                            showLabel("+ Create Node", ImColor(32, 45, 32, 180));
-                        }
+                        if (newLinkPin->Type == EditorArgsTypes::editor_arg_none) {
+                            if (newLinkPin) {
+                                showLabel("+ Create Node", ImColor(32, 45, 32, 180));
+                            }
 
-                        if (ed::AcceptNewItem()) {
-                            createNewNode  = true;
-                            newNodeLinkPin = FindPin(pinId);
-                            newLinkPin = nullptr;
-                            ed::Suspend();
-                            ImGui::OpenPopup("Create New Node");
-                            ed::Resume();
+                            if (ed::AcceptNewItem()) {
+                                createNewNode = true;
+                                newNodeLinkPin = FindPin(pinId);
+                                newLinkPin = nullptr;
+                                ed::Suspend();
+                                ImGui::OpenPopup("Create New Node");
+                                ed::Resume();
+ 
+                            }
                         }
                     }
                 }
@@ -885,8 +884,10 @@ struct Editor: public Application {
                 ImGui::Text("Unknown node: %p", contextNodeId.AsPointer());
             }
             ImGui::Separator();
-            if (ImGui::MenuItem("Delete")) {
-                ed::DeleteNode(contextNodeId);
+            if (node->EngineNode.EngineType != EditorNodeTypes::editor_node_event) {
+                if (ImGui::MenuItem("Delete")) {
+                    ed::DeleteNode(contextNodeId);
+                }
             }
             ImGui::EndPopup();
         }
@@ -944,10 +945,7 @@ struct Editor: public Application {
                         if (ImGui::MenuItem((f.Name).c_str())) {
                             int nodeId = GetNextId();
                             m_Nodes.emplace_back(nodeId, f, GetNodeColor(f.EngineType));
-                            if (f.EngineType == EditorNodeTypes::editor_node_event) {
-                                m_Nodes.back().Outputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
-                            }
-                            else if (f.EngineType == EditorNodeTypes::editor_node_function) {
+                            if (f.EngineType == EditorNodeTypes::editor_node_function) {
                                 m_Nodes.back().Inputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
                                 m_Nodes.back().Outputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
                             }
@@ -962,6 +960,12 @@ struct Editor: public Application {
                             for (int i = 0; i < f.OutputArgsNames.size(); i++) {
                                 m_Nodes.back().Outputs.emplace_back(GetNextId(), f.OutputArgsNames[i].c_str(), f.OutputArgsTypes[i]);
                             }
+
+                            if (newNodeLinkPin != nullptr) {
+                                m_Links.emplace_back(Link(GetNextId(), newNodeLinkPin->ID, m_Nodes.back().Inputs[0].ID));
+                                m_Links.back().Color = PinColorChoser[newNodeLinkPin->Type];
+                            }
+
                             BuildNode(&m_Nodes.back());
                             ed::SetNodePosition(nodeId, openPopupPosition);
                         }
@@ -988,7 +992,7 @@ struct Editor: public Application {
                             }
 
                             m_Links.emplace_back(Link(GetNextId(), startPin->ID, endPin->ID));
-                            m_Links.back().Color = GetIconColor(startPin->Type);
+                            m_Links.back().Color = PinColorChoser[startPin->Type];
 
                             break;
                         }
@@ -1062,10 +1066,6 @@ int Main(int argc, char** argv)
 {
     Editor editor("Editor", argc, argv);
 
-
-    // TBD: I think you should start your editor with all "Event" nodes. Forbid to delete them and add new.
-    // TBD: I think colorful(non-white) inputs should have only 1 link.
-
     // init library
     {
 #define GDR_BLUEPRINT_NODE(type, filter, name, number_of_input_args, number_of_output_args, input_args_types, output_args_types, input_args_names, output_args_names) \
@@ -1088,6 +1088,13 @@ int Main(int argc, char** argv)
         GDR_BLUEPRINT_LIST
 
 #undef GDR_BLUEPRINT_NODE
+    }
+
+    // init maps for color choosing
+    srand(1);
+    PinColorChoser[EditorArgsTypes(0)] = ImColor(255, 255, 255);
+    for (int i = 1; i < int(EditorArgsTypes::editor_arg_count); i++) {
+        PinColorChoser[EditorArgsTypes(i)] = ImColor(128 + rand() % 128, 128 + rand() % 128, 128 + rand() % 128);
     }
 
 
