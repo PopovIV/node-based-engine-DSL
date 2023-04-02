@@ -1294,22 +1294,37 @@ struct Editor: public Application {
                 ed::EndCreate();
 
                 if (ed::BeginDelete()) {
-                    ed::LinkId linkId = 0;
-                    while (ed::QueryDeletedLink(&linkId)) {
-                        if (ed::AcceptDeletedItem()) {
-                            auto id = std::find_if(m_Links.begin(), m_Links.end(), [linkId](auto& link) { return link.ID == linkId; });
-                            if (id != m_Links.end()) {
-                                m_Links.erase(id);
-                            }
-                        }
-                    }
 
                     ed::NodeId nodeId = 0;
                     while (ed::QueryDeletedNode(&nodeId)) {
                         if (ed::AcceptDeletedItem()) {
                             auto id = std::find_if(m_Nodes.begin(), m_Nodes.end(), [nodeId](auto& node) { return node.ID == nodeId; });
                             if (id != m_Nodes.end()) {
+                                for (auto& f : (*id).Inputs) {
+                                    for (auto& link : m_Links) {
+                                        if (link.EndPinID == f.ID || link.StartPinID == f.ID) {
+                                            ed::DeleteLink(link.ID);
+                                        }
+                                    }
+                                }
+                                for (auto& f : (*id).Outputs) {
+                                    for (auto& link : m_Links) {
+                                        if (link.EndPinID == f.ID || link.StartPinID == f.ID) {
+                                            ed::DeleteLink(link.ID);
+                                        }
+                                    }
+                                }
                                 m_Nodes.erase(id);
+                            }
+                        }
+                    }
+
+                    ed::LinkId linkId = 0;
+                    while (ed::QueryDeletedLink(&linkId)) {
+                        if (ed::AcceptDeletedItem()) {
+                            auto id = std::find_if(m_Links.begin(), m_Links.end(), [linkId](auto& link) { return link.ID == linkId; });
+                            if (id != m_Links.end()) {
+                                m_Links.erase(id);
                             }
                         }
                     }
@@ -1546,7 +1561,7 @@ struct Editor: public Application {
 
         json data;
 
-        data["version"] = 1.0;
+        data["version"] = MAX_SUPPORTED_VERSION;
         data["name"] = "scene";
 
         // Fill commands array here
