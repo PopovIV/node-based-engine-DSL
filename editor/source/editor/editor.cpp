@@ -45,6 +45,389 @@ using ax::Widgets::IconType;
 
 static ed::EditorContext* m_Editor = nullptr;
 
+namespace mth {
+	template<class Type>
+	class vec2
+	{
+	public:
+		union
+		{
+			Type X;
+			Type U;
+		};
+
+		union
+		{
+			Type Y;
+			Type V;
+		};
+
+        inline Type& operator[](unsigned int Index)
+        {
+            switch (Index)
+            {
+            case 0:
+                return X;
+            case 1:
+                return Y;
+            }
+            return X;
+        }
+	};
+
+
+	template<class Type>
+	class vec4
+	{
+	public:
+		union
+		{
+			Type X;
+			Type R;
+		};
+		union
+		{
+			Type Y;
+			Type G;
+		};
+		union
+		{
+			Type Z;
+			Type B;
+		};
+		union
+		{
+			Type W;
+			Type A;
+		};
+
+        inline Type& operator[](unsigned int Index)
+        {
+            switch (Index)
+            {
+            case 0:
+                return X;
+            case 1:
+                return Y;
+            case 2:
+                return Z;
+            case 3:
+                return W;
+            }
+            return X;
+        }
+	};
+
+	template<class Type>
+	class vec3
+	{
+	public:
+		/* Vector components */
+		union
+		{
+			Type X;
+			Type R;
+		};
+
+		union
+		{
+			Type Y;
+			Type G;
+		};
+
+		union
+		{
+			Type Z;
+			Type B;
+		};
+
+        inline Type& operator[](unsigned int Index)
+        {
+            switch (Index)
+            {
+            case 0:
+                return X;
+            case 1:
+                return Y;
+            case 2:
+                return Z;
+            }
+            return X;
+        }
+	};
+
+    template<class Type>
+    class matr4
+    {
+    public:
+        Type A[4][4];
+
+        /* Get matrix line funciton.
+       * ARGUMENTS:
+       *   - index of line:
+       *       unsigned int Index;
+       * RETURNS:
+       *   (Type *) matrix line.
+       */
+        inline Type* operator[](unsigned int Index)
+        {
+            return A[Index];
+        } /* End of 'operator[]' funciton */
+
+        /* Get constant matrix line funciton.
+         * ARGUMENTS:
+         *   - index of line:
+         *       unsigned int Index;
+         * RETURNS:
+         *   (Type *) matrix line.
+         */
+        inline const Type* operator[](unsigned int Index) const
+        {
+            return A[Index];
+        } /* End of 'operator[]' funciton */
+    };
+}
+
+using gdr_index = unsigned int;
+
+struct my_any
+{
+  EditorArgsTypes Type;
+  private:
+    std::string arg_string = "";
+    float arg_float = 0.0f;
+    mth::vec2<float> arg_float2 = { 0.0f, 0.0f };
+    mth::vec3<float> arg_float3 = { 0.0f, 0.0f, 0.0f};
+    mth::vec4<float> arg_float4 = { 0.0f, 0.0f, 0.0f, 0.0f };
+    mth::matr4<float> arg_matr;
+    gdr_index arg_gdr_index = 0;
+
+    bool converted[(int)EditorArgsTypes::editor_arg_count];
+
+    // for string delimiter
+    std::vector<std::string> split(std::string s, std::string delimiter) {
+      size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+      std::string token;
+      std::vector<std::string> res;
+
+      while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos) {
+        token = s.substr(pos_start, pos_end - pos_start);
+        pos_start = pos_end + delim_len;
+        res.push_back(token);
+      }
+
+      res.push_back(s.substr(pos_start));
+      return res;
+    }
+  public:
+    template<typename T>
+    T Get(void)
+    {
+      printf("UNKNOWN TYPE");
+      return T();
+    }
+
+    template<>
+    std::string Get<std::string>(void)
+    {
+      if (!converted[(int)EditorArgsTypes::editor_arg_string])
+        printf("cannot convert to string");
+      return arg_string;
+    }
+
+    template<>
+    float Get<float>(void)
+    {
+      if (!converted[(int)EditorArgsTypes::editor_arg_float])
+        printf("cannot convert to float");
+      return arg_float;
+    }
+
+    template<>
+    mth::vec2<float> Get<mth::vec2<float>>(void)
+    {
+      if (!converted[(int)EditorArgsTypes::editor_arg_float2])
+        printf("cannot convert to float2");
+      return arg_float2;
+    }
+
+    template<>
+    mth::vec3<float> Get<mth::vec3<float>>(void)
+    {
+      if (!converted[(int)EditorArgsTypes::editor_arg_float3])
+        printf("cannot convert to float3");
+      return arg_float3;
+    }
+
+    template<>
+    mth::vec4<float> Get<mth::vec4<float>>(void)
+    {
+      if (!converted[(int)EditorArgsTypes::editor_arg_float4])
+        printf("cannot convert to float4");
+      return arg_float4;
+    }
+
+    template<>
+    mth::matr4<float> Get<mth::matr4<float>>(void)
+    {
+      if (!converted[(int)EditorArgsTypes::editor_arg_matr])
+        printf("cannot convert to matr");
+      return arg_matr;
+    }
+
+    template<>
+    gdr_index Get<gdr_index>(void)
+    {
+      if (!converted[(int)EditorArgsTypes::editor_arg_gdr_index])
+        printf("cannot convert to matr");
+      return arg_gdr_index;
+    }
+
+    void Set(std::string t)
+    {
+      arg_string = t;
+
+      if (strncmp(arg_string.c_str(), "float{", strlen("float{")) == 0)
+      {
+        std::string inner_part = arg_string.substr(strlen("float{"));
+        inner_part.pop_back();
+
+        std::vector<std::string> splitted = split(inner_part, ", ");
+
+        Set((float)std::atof(splitted[0].c_str()));
+      }
+      else if (strncmp(arg_string.c_str(), "float2{", strlen("float2{")) == 0)
+      {
+        std::string inner_part = arg_string.substr(strlen("float2{"));
+        inner_part.pop_back();
+
+        std::vector<std::string> splitted = split(inner_part, ", ");
+
+        Set(mth::vec2<float>{ (float)std::atof(splitted[0].c_str()), (float)std::atof(splitted[1].c_str())});
+      }
+      else if (strncmp(arg_string.c_str(), "float3{", strlen("float3{")) == 0)
+      {
+        std::string inner_part = arg_string.substr(strlen("float3{"));
+        inner_part.pop_back();
+
+        std::vector<std::string> splitted = split(inner_part, ", ");
+
+        Set(mth::vec3<float>{ (float)std::atof(splitted[0].c_str()), (float)std::atof(splitted[1].c_str()), (float)std::atof(splitted[2].c_str()) });
+      }
+      else if (strncmp(arg_string.c_str(), "float4{", strlen("float4{")) == 0)
+      {
+        std::string inner_part = arg_string.substr(strlen("float4{"));
+        inner_part.pop_back();
+
+        std::vector<std::string> splitted = split(inner_part, ", ");
+
+        Set(mth::vec4<float>{ (float)std::atof(splitted[0].c_str()), (float)std::atof(splitted[1].c_str()), (float)std::atof(splitted[2].c_str()), (float)std::atof(splitted[3].c_str()) });
+      }
+      else if (strncmp(arg_string.c_str(), "matr{", strlen("matr{")) == 0)
+      {
+        std::string inner_part = arg_string.substr(strlen("matr{"));
+        inner_part.pop_back();
+
+        std::vector<std::string> splitted = split(inner_part, ", ");
+
+        Set(mth::matr4<float>{
+          (float)std::atof(splitted[0].c_str()),  (float)std::atof(splitted[1].c_str()),  (float)std::atof(splitted[2].c_str()),  (float)std::atof(splitted[3].c_str()),
+          (float)std::atof(splitted[4].c_str()),  (float)std::atof(splitted[5].c_str()),  (float)std::atof(splitted[6].c_str()),  (float)std::atof(splitted[7].c_str()),
+          (float)std::atof(splitted[8].c_str()),  (float)std::atof(splitted[9].c_str()),  (float)std::atof(splitted[10].c_str()), (float)std::atof(splitted[11].c_str()),
+          (float)std::atof(splitted[12].c_str()), (float)std::atof(splitted[13].c_str()), (float)std::atof(splitted[14].c_str()), (float)std::atof(splitted[15].c_str())});
+      }
+      else if (strncmp(arg_string.c_str(), "index{", strlen("index{")) == 0)
+      {
+        std::string inner_part = arg_string.substr(strlen("index{"));
+        inner_part.pop_back();
+
+        std::vector<std::string> splitted = split(inner_part, ", ");
+
+        Set(gdr_index((unsigned)std::atoll(splitted[0].c_str())));
+      }
+      else
+      {
+        for (int i = 0; i < (int)EditorArgsTypes::editor_arg_count; i++)
+          converted[i] = false;
+        converted[(int)EditorArgsTypes::editor_arg_string] = true;
+      }
+    }
+
+    void Set(float t)
+    {
+      arg_float = t;
+      arg_gdr_index = (unsigned)t;
+      arg_string = std::string("float{") + std::to_string(t) + "}";
+
+      for (int i = 0; i < (int)EditorArgsTypes::editor_arg_count; i++)
+        converted[i] = false;
+      converted[(int)EditorArgsTypes::editor_arg_float] = true;
+      converted[(int)EditorArgsTypes::editor_arg_string] = true;
+      converted[(int)EditorArgsTypes::editor_arg_gdr_index] = true;
+    }
+
+    void Set(mth::vec2<float> t)
+    {
+      arg_float2 = t;
+      arg_string = std::string("float2{") + std::to_string(t[0]) + ", " + std::to_string(t[1]) + "}";
+
+      for (int i = 0; i < (int)EditorArgsTypes::editor_arg_count; i++)
+        converted[i] = false;
+      converted[(int)EditorArgsTypes::editor_arg_string] = true;
+      converted[(int)EditorArgsTypes::editor_arg_float2] = true;
+    }
+
+    void Set(mth::vec3<float> t)
+    {
+      arg_float3 = t;
+      arg_string = std::string("float3{") + std::to_string(t[0]) + ", " + std::to_string(t[1]) + ", " + std::to_string(t[2]) + "}";
+
+      for (int i = 0; i < (int)EditorArgsTypes::editor_arg_count; i++)
+        converted[i] = false;
+      converted[(int)EditorArgsTypes::editor_arg_string] = true;
+      converted[(int)EditorArgsTypes::editor_arg_float3] = true;
+    }
+
+    void Set(mth::vec4<float> t)
+    {
+      arg_float4 = t;
+      arg_string = std::string("float4{") + std::to_string(t[0]) + ", " + std::to_string(t[1]) + ", " + std::to_string(t[2]) + ", " + std::to_string(t[3]) + "}";
+
+      for (int i = 0; i < (int)EditorArgsTypes::editor_arg_count; i++)
+        converted[i] = false;
+      converted[(int)EditorArgsTypes::editor_arg_string] = true;
+      converted[(int)EditorArgsTypes::editor_arg_float4] = true;
+    }
+
+    void Set(mth::matr4<float> t)
+    {
+      arg_matr = t;
+      arg_string = std::string("matr{");
+      for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 4; j++)
+          arg_string += std::to_string(t[i][j]) + ((i == 3 && j == 3) ? "}" : ", ");
+
+
+      for (int i = 0; i < (int)EditorArgsTypes::editor_arg_count; i++)
+        converted[i] = false;
+      converted[(int)EditorArgsTypes::editor_arg_string] = true;
+      converted[(int)EditorArgsTypes::editor_arg_matr] = true;
+    }
+
+    void Set(gdr_index t)
+    {
+      arg_gdr_index = t;
+      arg_float = (float)t;
+      arg_string = std::string("index{") + std::to_string(t) + "}";
+
+      for (int i = 0; i < (int)EditorArgsTypes::editor_arg_count; i++)
+        converted[i] = false;
+      converted[(int)EditorArgsTypes::editor_arg_string] = true;
+      converted[(int)EditorArgsTypes::editor_arg_float] = true;
+      converted[(int)EditorArgsTypes::editor_arg_gdr_index] = true;
+    }
+};
+
 enum class PinType {
     Flow,
     Bool,
@@ -65,6 +448,7 @@ struct Node;
 
 struct Pin {
     ed::PinId   ID;
+    my_any ConstantValue;
     ::Node*     Node;
     std::string Name;
     EditorArgsTypes     Type;
@@ -94,6 +478,7 @@ std::map<EditorArgsTypes, ImColor> PinColorChoser;
 
 struct Node {
     ed::NodeId ID;
+    bool IsVisited = false; // For json traversal
     BlueprintLibraryNode EngineNode;
     std::string Name;
     std::vector<Pin> Inputs;
@@ -705,7 +1090,7 @@ struct Editor: public Application {
                          ImGui::TextUnformatted(input.Name.c_str());
                          ImGui::Spring(0);
                     }
-                    //
+                    // TBD: FIX Conctant value
                     static char str1[128] = "";
                     static int i0 = 0;
                     static float f1 = 0.0f;
@@ -721,35 +1106,75 @@ struct Editor: public Application {
                         ImGui::PushItemWidth(width);
                         switch (input.Type) {
                         case EditorArgsTypes::editor_arg_string:
+                            strcpy_s(str1, input.ConstantValue.Get<std::string>().c_str());
                             ImGui::InputText("", str1, IM_ARRAYSIZE(str1));
+                            input.ConstantValue.Set(str1);
                             break;
                         case EditorArgsTypes::editor_arg_float:
-                            ImGui::InputFloat("", &f1, 0.0f, 0.0f, "%.3e");
+                            f1 = input.ConstantValue.Get<float>();
+                            ImGui::InputFloat("", &f1, 0.0f, 0.0f);
+                            input.ConstantValue.Set(f1);
                             break;
                         case EditorArgsTypes::editor_arg_float2:
+                            vec4f[0] = input.ConstantValue.Get<mth::vec2<float>>()[0];
+                            vec4f[1] = input.ConstantValue.Get<mth::vec2<float>>()[1];
                             ImGui::PushItemWidth(width * 2);
                             ImGui::InputFloat2("", vec4f);
+                            input.ConstantValue.Set(mth::vec2<float>{vec4f[0], vec4f[1]});
                             break;
                         case EditorArgsTypes::editor_arg_float3:
+                            vec4f[0] = input.ConstantValue.Get<mth::vec3<float>>()[0];
+                            vec4f[1] = input.ConstantValue.Get<mth::vec3<float>>()[1];
+                            vec4f[2] = input.ConstantValue.Get<mth::vec3<float>>()[2];
                             ImGui::PushItemWidth(width * 3);
                             ImGui::InputFloat3("", vec4f);
+                            input.ConstantValue.Set(mth::vec3<float>{vec4f[0], vec4f[1], vec4f[2]});
                             break;
                         case EditorArgsTypes::editor_arg_float4:
+                            vec4f[0] = input.ConstantValue.Get<mth::vec4<float>>()[0];
+                            vec4f[1] = input.ConstantValue.Get<mth::vec4<float>>()[1];
+                            vec4f[2] = input.ConstantValue.Get<mth::vec4<float>>()[2];
+                            vec4f[3] = input.ConstantValue.Get<mth::vec4<float>>()[3];
                             ImGui::PushItemWidth(width * 4);
                             ImGui::InputFloat4("", vec4f);
+                            input.ConstantValue.Set(mth::vec4<float>{vec4f[0], vec4f[1], vec4f[2], vec4f[3]});
                             break;
                         case EditorArgsTypes::editor_arg_matr:
+                            matrRow0[0] = input.ConstantValue.Get<mth::matr4<float>>()[0][0];
+                            matrRow0[1] = input.ConstantValue.Get<mth::matr4<float>>()[0][1];
+                            matrRow0[2] = input.ConstantValue.Get<mth::matr4<float>>()[0][2];
+                            matrRow0[3] = input.ConstantValue.Get<mth::matr4<float>>()[0][3];
+                            matrRow1[0] = input.ConstantValue.Get<mth::matr4<float>>()[1][0];
+                            matrRow1[1] = input.ConstantValue.Get<mth::matr4<float>>()[1][1];
+                            matrRow1[2] = input.ConstantValue.Get<mth::matr4<float>>()[1][2];
+                            matrRow1[3] = input.ConstantValue.Get<mth::matr4<float>>()[1][3];
+                            matrRow2[0] = input.ConstantValue.Get<mth::matr4<float>>()[2][0];
+                            matrRow2[1] = input.ConstantValue.Get<mth::matr4<float>>()[2][1];
+                            matrRow2[2] = input.ConstantValue.Get<mth::matr4<float>>()[2][2];
+                            matrRow2[3] = input.ConstantValue.Get<mth::matr4<float>>()[2][3];
+                            matrRow3[0] = input.ConstantValue.Get<mth::matr4<float>>()[3][0];
+                            matrRow3[1] = input.ConstantValue.Get<mth::matr4<float>>()[3][1];
+                            matrRow3[2] = input.ConstantValue.Get<mth::matr4<float>>()[3][2];
+                            matrRow3[3] = input.ConstantValue.Get<mth::matr4<float>>()[3][3];
                             ImGui::PushItemWidth(width * 4);
                             ImGui::InputFloat4("", matrRow0);
                             ImGui::InputFloat4("", matrRow1);
                             ImGui::InputFloat4("", matrRow2);
                             ImGui::InputFloat4("", matrRow3);
+                            input.ConstantValue.Set(mth::matr4<float>{
+                               matrRow0[0], matrRow0[1], matrRow0[2], matrRow0[3],
+                               matrRow1[0], matrRow1[1], matrRow1[2], matrRow1[3],
+                               matrRow2[0], matrRow2[1], matrRow2[2], matrRow2[3],
+                               matrRow3[0], matrRow3[1], matrRow3[2], matrRow3[3] });
                             break;
                         case EditorArgsTypes::editor_arg_none:
                             break;
                         case EditorArgsTypes::editor_arg_gdr_index:
                         default:
+                            // TBD: Only positive + 0
+                            i0 = input.ConstantValue.Get<gdr_index>();
                             ImGui::InputInt("", &i0);
+                            input.ConstantValue.Set((unsigned int)i0);
                             break;
                         }
                         ImGui::PopItemWidth();
@@ -1114,6 +1539,11 @@ struct Editor: public Application {
             }
         }
 
+        for (auto& node : m_Nodes) {
+            node.EngineNode.CommandIndex = 0;
+            node.IsVisited = false;
+        }
+
         json data;
 
         data["version"] = 1.0;
@@ -1123,9 +1553,11 @@ struct Editor: public Application {
         json commands = json(m_Nodes.size(), nullptr);
         // Push all event nodes in stack
         std::vector<Node*> stack;
+
         int commandIndex = 0;
         for (int i = 0; i < m_Nodes.size() && m_Nodes[i].EngineNode.EngineType == EditorNodeTypes::editor_node_event; i++) {
             m_Nodes[i].EngineNode.CommandIndex = commandIndex++;
+            m_Nodes[i].IsVisited = true;
             stack.push_back(&m_Nodes[i]);
         }
         std::reverse(stack.begin(), stack.end());
@@ -1138,24 +1570,60 @@ struct Editor: public Application {
             command["library_func_index"] = node->EngineNode.LibraryIndex;
             ImVec2 pos = ed::GetNodePosition(node->ID);
             command["pos"] = { pos.x, pos.y };
+            command["output_argument"] = std::vector<int>();
             for (auto& output : node->Outputs) {
-                if (output.Type != EditorArgsTypes::editor_arg_none || !IsPinLinked(output.ID)) {
+                if (output.Type != EditorArgsTypes::editor_arg_none) {
+                    command["output_argument"].emplace_back(output.ID.Get());
                     continue;
                 }
-                command["next_nodes"].emplace_back(commandIndex);
+                if (!IsPinLinked(output.ID)) {
+                    continue;
+                }
                 Node* newNode = FindEndNode(output.ID);
-                newNode->EngineNode.CommandIndex = commandIndex++;
-                stack.push_back(newNode);
+                if (!newNode->IsVisited) {
+                    command["next_nodes"].emplace_back(commandIndex);
+                    newNode->EngineNode.CommandIndex = commandIndex++;
+                    newNode->IsVisited = true;
+                    stack.push_back(newNode);
+                }
+                else {
+                    command["next_nodes"].emplace_back(newNode->EngineNode.CommandIndex);
+                }
             }
             if (command["next_nodes"].empty()) {
-                command["next_nodes"] = ZERO_CODE;
+                command["next_nodes"] = { ZERO_CODE };
             }
             commands[node->EngineNode.CommandIndex] = command;
         }
+        for (auto& node : m_Nodes) {
+            json inputs = std::vector<int>();
+            for (auto& input : node.Inputs) {
+                if (input.Type == EditorArgsTypes::editor_arg_none) {
+                    continue;
+                }
+                json j_input;
+                j_input["type"] = input.Type;
+                j_input["value"] = "";
+                j_input["slots"] = std::vector<int>();
+                if (!IsPinLinked(input.ID)) {
+                    j_input["value"] = input.ConstantValue.Get<std::string>();
+                } 
+                else {
+                    for (auto& link : m_Links) {
+                        if (link.EndPinID == input.ID) {
+                            j_input["slots"].emplace_back(link.StartPinID.Get());
+                        }
+                    }
+                }
+                inputs.emplace_back(j_input);
+            }
+            commands[node.EngineNode.CommandIndex]["input_argument"] = inputs;
+        }
+
         data["commands"] = commands;
 
         // dump json to file
-        file << data.dump();
+        file << std::setw(4) << data << std::endl;
     }
 
     void ParseJson(std::string fileName) {
@@ -1166,7 +1634,7 @@ struct Editor: public Application {
         if (!file.is_open()) {
             if (ImGui::BeginPopup("Error pop up", ImGuiWindowFlags_MenuBar)) {
                 ImGui::Text("Could not open json file");
-                if (ImGui::Button("This is a dummy button..")) {
+                if (ImGui::Button("OK")) {
                     ImGui::EndPopup();
                 }
                 return;
