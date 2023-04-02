@@ -21,6 +21,7 @@ using json = nlohmann::json;
 #include "utilities/ImGuiFileBrowser/ImGuiFileBrowser.h"
 imgui_addons::ImGuiFileBrowser file_dialog;
 
+#define ZERO_CODE 0xFFFFFFFF
 
 static inline ImRect ImGui_GetItemRect() {
     return ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
@@ -79,14 +80,17 @@ struct BlueprintLibraryNode {
     EditorNodeTypes EngineType;
     std::string Filter;
     std::string Name;
+    unsigned int LibraryIndex;
+    unsigned int CommandIndex; // The best idea to work around if shit
     std::vector<EditorArgsTypes> InputArgsTypes;
     std::vector<EditorArgsTypes> OutputArgsTypes;
     std::vector<std::string> InputArgsNames;
     std::vector<std::string> OutputArgsNames;
 };
 
-static std::map<std::string, std::vector<BlueprintLibraryNode>> BlueprintLibrary;
-static std::map<EditorArgsTypes, ImColor> PinColorChoser;
+std::vector<std::string> InsertOrder;
+std::map<std::string, std::vector<BlueprintLibraryNode>> BlueprintLibrary;
+std::map<EditorArgsTypes, ImColor> PinColorChoser;
 
 struct Node {
     ed::NodeId ID;
@@ -111,7 +115,6 @@ struct Link {
 
     ed::PinId StartPinID;
     ed::PinId EndPinID;
-
     ImColor Color;
 
     Link(ed::LinkId id, ed::PinId startPinId, ed::PinId endPinId):
@@ -227,6 +230,20 @@ struct Editor: public Application {
         return false;
     }
 
+    Node* FindEndNode(ed::PinId id) {
+        if (!id) {
+            return false;
+        }
+
+        for (auto& link : m_Links) {
+            if (link.StartPinID == id) {
+                return FindPin(link.EndPinID)->Node;
+            }
+        }
+
+        return nullptr;
+    }
+
     bool CanCreateLink(Pin* a, Pin* b) {
         if (!a || !b || a == b || a->Kind == b->Kind || a->Type != b->Type || a->Node == b->Node) {
             return false;
@@ -294,13 +311,13 @@ struct Editor: public Application {
             int nodeId = GetNextId();
             m_Nodes.emplace_back(nodeId, f, GetNodeColor(f.EngineType));
             m_Nodes.back().Outputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
-            BuildNode(&m_Nodes.back());
             auto pos = ImVec2(x, y);
             ed::SetNodePosition(nodeId, pos);
             y += 100.0f;
         }
+        BuildNodes();
 
-        BlueprintLibrary.erase("Event");
+        //BlueprintLibrary.erase("Event");
 
         m_HeaderBackground = LoadTexture("data/BlueprintBackground.png");
         m_SaveIcon         = LoadTexture("data/ic_save_white_24dp.png");
@@ -457,15 +474,11 @@ struct Editor: public Application {
         }
         if (file_dialog.showFileDialog("Open File", imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(700, 310), ".json"))
         {
-            std::cout << file_dialog.selected_fn << std::endl;      // The name of the selected file or directory in case of Select Directory dialog mode
-            std::cout << file_dialog.selected_path << std::endl;    // The absolute path to the selected file
+            ParseJson(file_dialog.selected_path);
         }
         if (file_dialog.showFileDialog("Save File", imgui_addons::ImGuiFileBrowser::DialogMode::SAVE, ImVec2(700, 310), ".json"))
         {
-            std::cout << file_dialog.selected_fn << std::endl;      // The name of the selected file or directory in case of Select Directory dialog mode
-            std::cout << file_dialog.selected_path << std::endl;    // The absolute path to the selected file
-            std::cout << file_dialog.ext << std::endl;              // Access ext separately (For SAVE mode)
-            //Do writing of files based on extension here
+            SceneToJSon(file_dialog.selected_path);
         }
 
         ImGui::EndHorizontal();
@@ -972,35 +985,22 @@ struct Editor: public Application {
 
             Node* node = nullptr;
             for (auto& v : BlueprintLibrary) {
+                if (v.first == "Event") {
+                    continue;
+                }
                 if (ImGui::BeginMenu(v.first.c_str())) {
                     std::string key = v.first;
                     for (auto& f : BlueprintLibrary[key]) {
                         if (ImGui::MenuItem((f.Name).c_str())) {
                             int nodeId = GetNextId();
-                            m_Nodes.emplace_back(nodeId, f, GetNodeColor(f.EngineType));
-                            if (f.EngineType == EditorNodeTypes::editor_node_function) {
-                                m_Nodes.back().Inputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
-                                m_Nodes.back().Outputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
-                            }
-                            else if (f.EngineType == EditorNodeTypes::editor_node_workflow) {
-                                m_Nodes.back().Inputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
-                                m_Nodes.back().Outputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
-                                m_Nodes.back().Outputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
-                            }
-                            for (int i = 0; i < f.InputArgsNames.size(); i++) {
-                                m_Nodes.back().Inputs.emplace_back(GetNextId(), f.InputArgsNames[i].c_str(), f.InputArgsTypes[i]);
-                            }
-                            for (int i = 0; i < f.OutputArgsNames.size(); i++) {
-                                m_Nodes.back().Outputs.emplace_back(GetNextId(), f.OutputArgsNames[i].c_str(), f.OutputArgsTypes[i]);
-                            }
-
+                            SpawnNodeFromLibrary(f, nodeId);
                             if (newNodeLinkPin != nullptr) {
                                 m_Links.emplace_back(Link(GetNextId(), newNodeLinkPin->ID, m_Nodes.back().Inputs[0].ID));
                                 m_Links.back().Color = PinColorChoser[newNodeLinkPin->Type];
                             }
-
-                            BuildNode(&m_Nodes.back());
+                            //BuildNode(&m_Nodes.back());
                             ed::SetNodePosition(nodeId, openPopupPosition);
+                            BuildNodes();
                         }
                     }
                     ImGui::EndMenu();
@@ -1083,6 +1083,122 @@ struct Editor: public Application {
         }
     }
 
+    void SpawnNodeFromLibrary(BlueprintLibraryNode node, unsigned int id) {
+        m_Nodes.emplace_back(id, node, GetNodeColor(node.EngineType));
+        if (node.EngineType == EditorNodeTypes::editor_node_function) {
+            m_Nodes.back().Inputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
+            m_Nodes.back().Outputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
+        }
+        else if (node.EngineType == EditorNodeTypes::editor_node_workflow) {
+            m_Nodes.back().Inputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
+            m_Nodes.back().Outputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
+            m_Nodes.back().Outputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
+        }
+        for (int i = 0; i < node.InputArgsNames.size(); i++) {
+            m_Nodes.back().Inputs.emplace_back(GetNextId(), node.InputArgsNames[i].c_str(), node.InputArgsTypes[i]);
+        }
+        for (int i = 0; i < node.OutputArgsNames.size(); i++) {
+            m_Nodes.back().Outputs.emplace_back(GetNextId(), node.OutputArgsNames[i].c_str(), node.OutputArgsTypes[i]);
+        }
+    }
+
+    void SceneToJSon(std::string fileName) {
+        std::ofstream file(fileName);
+        if (!file.is_open()) {
+            if (ImGui::BeginPopup("Error pop up", ImGuiWindowFlags_MenuBar)) {
+                ImGui::Text("Could not save json file");
+                if (ImGui::Button("This is a dummy button..")) {
+                    ImGui::EndPopup();
+                }
+                return;
+            }
+        }
+
+        json data;
+
+        data["version"] = 1.0;
+        data["name"] = "scene";
+
+        // Fill commands array here
+        json commands = json(m_Nodes.size(), nullptr);
+        // Push all event nodes in stack
+        std::vector<Node*> stack;
+        int commandIndex = 0;
+        for (int i = 0; i < m_Nodes.size() && m_Nodes[i].EngineNode.EngineType == EditorNodeTypes::editor_node_event; i++) {
+            m_Nodes[i].EngineNode.CommandIndex = commandIndex++;
+            stack.push_back(&m_Nodes[i]);
+        }
+        std::reverse(stack.begin(), stack.end());
+        // While have nodes in stack
+        while (!stack.empty()) {
+            json command;
+            Node* node = stack.back();
+            stack.pop_back();
+
+            command["library_func_index"] = node->EngineNode.LibraryIndex;
+            ImVec2 pos = ed::GetNodePosition(node->ID);
+            command["pos"] = { pos.x, pos.y };
+            for (auto& output : node->Outputs) {
+                if (output.Type != EditorArgsTypes::editor_arg_none || !IsPinLinked(output.ID)) {
+                    continue;
+                }
+                command["next_nodes"].emplace_back(commandIndex);
+                Node* newNode = FindEndNode(output.ID);
+                newNode->EngineNode.CommandIndex = commandIndex++;
+                stack.push_back(newNode);
+            }
+            if (command["next_nodes"].empty()) {
+                command["next_nodes"] = ZERO_CODE;
+            }
+            commands[node->EngineNode.CommandIndex] = command;
+        }
+        data["commands"] = commands;
+
+        // dump json to file
+        file << data.dump();
+    }
+
+    void ParseJson(std::string fileName) {
+        m_Nodes.clear();
+        m_Links.clear();
+
+        std::ifstream file(fileName);
+        if (!file.is_open()) {
+            if (ImGui::BeginPopup("Error pop up", ImGuiWindowFlags_MenuBar)) {
+                ImGui::Text("Could not open json file");
+                if (ImGui::Button("This is a dummy button..")) {
+                    ImGui::EndPopup();
+                }
+                return;
+            }
+        }
+
+        json data = json::parse(file);
+        std::string str = data.dump();
+        json commands = data["commands"];
+        for (auto& f : commands) {
+            auto node = SpawnNodeById(f["library_func_index"]);
+            int nodeId = GetNextId();
+            SpawnNodeFromLibrary(*node, nodeId);
+            auto pos = f["pos"];
+            ed::SetNodePosition(nodeId, ImVec2(pos[0], pos[1]));
+        }
+
+    }
+
+    BlueprintLibraryNode* SpawnNodeById(int id) {
+        for (auto& f : InsertOrder) {
+            if ((id -(int)BlueprintLibrary[f].size()) > 0) {
+                id -= (int)BlueprintLibrary[f].size();
+            }
+            else {
+                return &BlueprintLibrary[f][id];
+            }
+
+        }
+        return nullptr;
+    }
+
     int                  m_NextId = 1;
     const int            m_PinIconSize = 24;
     std::vector<Node>    m_Nodes;
@@ -1105,6 +1221,7 @@ int Main(int argc, char** argv)
         { \
           BlueprintLibraryNode newNode;\
           newNode.EngineType = type;\
+          newNode.LibraryIndex = nodeCount++;\
           newNode.Filter = filter;\
           newNode.Name = name;\
           newNode.InputArgsNames = input_args_names;\
@@ -1116,8 +1233,10 @@ int Main(int argc, char** argv)
           for (int i = 0; i < number_of_output_args; i++)\
               newNode.OutputArgsTypes.push_back(output_args[i]); \
           BlueprintLibrary[newNode.Filter].push_back(newNode); \
+          InsertOrder.push_back(newNode.Filter);\
         };
 
+        static int nodeCount = 0;
         GDR_BLUEPRINT_LIST
 
 #undef GDR_BLUEPRINT_NODE
