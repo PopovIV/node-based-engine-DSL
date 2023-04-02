@@ -1516,7 +1516,10 @@ struct Editor: public Application {
 
     void SpawnNodeFromLibrary(BlueprintLibraryNode node, unsigned int id) {
         m_Nodes.emplace_back(id, node, GetNodeColor(node.EngineType));
-        if (node.EngineType == EditorNodeTypes::editor_node_function) {
+        if (node.EngineType == EditorNodeTypes::editor_node_event) {
+            m_Nodes.back().Outputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
+        }
+        else if (node.EngineType == EditorNodeTypes::editor_node_function) {
             m_Nodes.back().Inputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
             m_Nodes.back().Outputs.emplace_back(GetNextId(), "", EditorArgsTypes::editor_arg_none);
         }
@@ -1648,21 +1651,65 @@ struct Editor: public Application {
         }
 
         json data = json::parse(file);
-        std::string str = data.dump();
         json commands = data["commands"];
-        for (auto& f : commands) {
-            auto node = SpawnNodeById(f["library_func_index"]);
+        // Spawn nodes
+        std::vector<Node> commandNodeMap;
+        std::map<int, ed::PinId> outputPinsMap;
+        for (int i = 0; i < commands.size(); i++) {
+            auto node = SpawnNodeById(commands[i]["library_func_index"]);
             int nodeId = GetNextId();
             SpawnNodeFromLibrary(*node, nodeId);
-            auto pos = f["pos"];
+            commandNodeMap.push_back(m_Nodes.back());
+            int outputIndex = 0;
+            for (auto& output : m_Nodes.back().Outputs) {
+                if (output.Type == EditorArgsTypes::editor_arg_none) {
+                    continue;
+                }
+                outputPinsMap.insert({ commands[i]["output_argument"][outputIndex++], output.ID });
+            }
+            auto pos = commands[i]["pos"];
             ed::SetNodePosition(nodeId, ImVec2(pos[0], pos[1]));
         }
+        // Connect lines
+        for (int i = 0; i < commands.size(); i++) {
+            json nextNodes = commands[i]["next_nodes"];
+            if (nextNodes[0] != ZERO_CODE) {
+                for (auto& nodeId : nextNodes) {
+                    m_Links.emplace_back(Link(GetNextId(), commandNodeMap[i].Outputs[0].ID, commandNodeMap[nodeId].Inputs[0].ID));
+                    m_Links.back().Color = PinColorChoser[commandNodeMap[i].Outputs[0].Type];
+                }
+            }
+
+            json inputArgs = commands[i]["input_argument"];
+            int inputIndex = 0;
+            for (auto& input : commandNodeMap[i].Inputs) {
+                if (input.Type == EditorArgsTypes::editor_arg_none) {
+                    continue;
+                }
+                json arg = inputArgs[inputIndex++];
+                if (arg["slots"].empty()) {
+                    // I hate C++ for this, maybe fix later...
+                    Pin* pin = FindPin(input.ID);
+                    std::string str = arg["value"];
+                    pin->ConstantValue.Set(str);
+                }
+                else {
+                    for (auto& slot : arg["slots"]) {
+                        Pin* output = FindPin(outputPinsMap[slot]);
+                        m_Links.emplace_back(Link(GetNextId(), input.ID, output->ID));
+                        m_Links.back().Color = PinColorChoser[input.Type];
+                    }
+                }
+            }
+
+        }
+        BuildNodes();
 
     }
 
     BlueprintLibraryNode* SpawnNodeById(int id) {
         for (auto& f : InsertOrder) {
-            if ((id -(int)BlueprintLibrary[f].size()) > 0) {
+            if ((id -(int)BlueprintLibrary[f].size()) >= 0) {
                 id -= (int)BlueprintLibrary[f].size();
             }
             else {
@@ -1713,6 +1760,15 @@ int Main(int argc, char** argv)
         static int nodeCount = 0;
         GDR_BLUEPRINT_LIST
 
+        std::vector<std::string>::iterator last;
+        std::vector<std::string>::iterator it;
+        std::vector<std::string> tmp;
+        last = std::unique(InsertOrder.begin(), InsertOrder.end());
+        for (it = InsertOrder.begin(); it != last; ++it) {
+            tmp.push_back(*it);
+        }
+        InsertOrder = tmp;
+
 #undef GDR_BLUEPRINT_NODE
     }
 
@@ -1722,8 +1778,6 @@ int Main(int argc, char** argv)
     for (int i = 1; i < int(EditorArgsTypes::editor_arg_count); i++) {
         PinColorChoser[EditorArgsTypes(i)] = ImColor(128 + rand() % 128, 128 + rand() % 128, 128 + rand() % 128);
     }
-
-
 
     if (editor.Create()) {
         return editor.Run();
