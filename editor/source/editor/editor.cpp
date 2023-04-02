@@ -46,21 +46,21 @@ using ax::Widgets::IconType;
 static ed::EditorContext* m_Editor = nullptr;
 
 namespace mth {
-	template<class Type>
-	class vec2
-	{
-	public:
-		union
-		{
-			Type X;
-			Type U;
-		};
+    template<class Type>
+    class vec2
+    {
+    public:
+        union
+        {
+            Type X;
+            Type U;
+        };
 
-		union
-		{
-			Type Y;
-			Type V;
-		};
+        union
+        {
+           Type Y;
+           Type V;
+        };
 
         inline Type& operator[](unsigned int Index)
         {
@@ -73,33 +73,32 @@ namespace mth {
             }
             return X;
         }
-	};
+    };
 
-
-	template<class Type>
-	class vec4
-	{
-	public:
-		union
-		{
-			Type X;
-			Type R;
-		};
-		union
-		{
-			Type Y;
-			Type G;
-		};
-		union
-		{
-			Type Z;
-			Type B;
-		};
-		union
-		{
-			Type W;
-			Type A;
-		};
+    template<class Type>
+    class vec4
+    {
+    public:
+        union
+        {
+            Type X;
+            Type R;
+        };
+        union
+        {
+            Type Y;
+            Type G;
+        };
+        union
+        {
+            Type Z;
+            Type B;
+        };
+        union
+        {
+            Type W;
+            Type A;
+        };
 
         inline Type& operator[](unsigned int Index)
         {
@@ -116,30 +115,30 @@ namespace mth {
             }
             return X;
         }
-	};
+    };
 
-	template<class Type>
-	class vec3
-	{
-	public:
-		/* Vector components */
-		union
-		{
-			Type X;
-			Type R;
-		};
+    template<class Type>
+    class vec3
+    {
+    public:
+        /* Vector components */
+        union
+        {
+            Type X;
+            Type R;
+        };
 
-		union
-		{
-			Type Y;
-			Type G;
-		};
+        union
+        {
+            Type Y;
+            Type G;
+        };
 
-		union
-		{
-			Type Z;
-			Type B;
-		};
+        union
+        {
+            Type Z;
+            Type B;
+        };
 
         inline Type& operator[](unsigned int Index)
         {
@@ -154,7 +153,7 @@ namespace mth {
             }
             return X;
         }
-	};
+    };
 
     template<class Type>
     class matr4
@@ -162,29 +161,16 @@ namespace mth {
     public:
         Type A[4][4];
 
-        /* Get matrix line funciton.
-       * ARGUMENTS:
-       *   - index of line:
-       *       unsigned int Index;
-       * RETURNS:
-       *   (Type *) matrix line.
-       */
+
         inline Type* operator[](unsigned int Index)
         {
             return A[Index];
-        } /* End of 'operator[]' funciton */
+        }
 
-        /* Get constant matrix line funciton.
-         * ARGUMENTS:
-         *   - index of line:
-         *       unsigned int Index;
-         * RETURNS:
-         *   (Type *) matrix line.
-         */
         inline const Type* operator[](unsigned int Index) const
         {
             return A[Index];
-        } /* End of 'operator[]' funciton */
+        }
     };
 }
 
@@ -702,7 +688,7 @@ struct Editor: public Application {
         }
         BuildNodes();
 
-        //BlueprintLibrary.erase("Event");
+        ed::NavigateToContent();
 
         m_HeaderBackground = LoadTexture("data/BlueprintBackground.png");
         m_SaveIcon         = LoadTexture("data/ic_save_white_24dp.png");
@@ -1090,7 +1076,7 @@ struct Editor: public Application {
                          ImGui::TextUnformatted(input.Name.c_str());
                          ImGui::Spring(0);
                     }
-                    // TBD: FIX Conctant value
+
                     static char str1[128] = "";
                     static int i0 = 0;
                     static float f1 = 0.0f;
@@ -1171,9 +1157,11 @@ struct Editor: public Application {
                             break;
                         case EditorArgsTypes::editor_arg_gdr_index:
                         default:
-                            // TBD: Only positive + 0
                             i0 = input.ConstantValue.Get<gdr_index>();
                             ImGui::InputInt("", &i0);
+                            if (i0 < 0) {
+                                i0 = 0;
+                            }
                             input.ConstantValue.Set((unsigned int)i0);
                             break;
                         }
@@ -1299,6 +1287,9 @@ struct Editor: public Application {
                     while (ed::QueryDeletedNode(&nodeId)) {
                         if (ed::AcceptDeletedItem()) {
                             auto id = std::find_if(m_Nodes.begin(), m_Nodes.end(), [nodeId](auto& node) { return node.ID == nodeId; });
+                            if ((*id).EngineNode.EngineType == EditorNodeTypes::editor_node_event) {
+                                continue;
+                            }
                             if (id != m_Nodes.end()) {
                                 for (auto& f : (*id).Inputs) {
                                     for (auto& link : m_Links) {
@@ -1439,7 +1430,7 @@ struct Editor: public Application {
                                 m_Links.back().Color = PinColorChoser[newNodeLinkPin->Type];
                             }
                             //BuildNode(&m_Nodes.back());
-                            ed::SetNodePosition(nodeId, openPopupPosition);
+                            ed::SetNodePosition(nodeId, newNodePostion);
                             BuildNodes();
                         }
                     }
