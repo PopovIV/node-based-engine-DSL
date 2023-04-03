@@ -1,0 +1,217 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\thirdparty">
+      <UniqueIdentifier>{9d2ab7ae-9693-4c63-8b4c-04da0eab4833}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\thirdparty\imgui">
+      <UniqueIdentifier>{9285eef0-133e-4b51-b3bd-7fcf22a65082}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\thirdparty\imgui_node_editor">
+      <UniqueIdentifier>{22435ecf-041f-4174-981c-10fb1893aa01}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\thirdparty\stb">
+      <UniqueIdentifier>{d5a2ab72-c71d-4d78-8fa1-2a3dde9825f7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\thirdparty\json">
+      <UniqueIdentifier>{0dc3ca13-1c4b-4294-a378-480f84bb4557}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\application">
+      <UniqueIdentifier>{98331e49-92d0-4acb-9a64-fec0586b6894}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\application\support">
+      <UniqueIdentifier>{0db9fb3d-04ae-4b75-8a60-ff20b6e58975}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\utils">
+      <UniqueIdentifier>{d91c8869-f723-43d4-b9e3-42e30c6fb2c6}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="application\include\application.h">
+      <Filter>Source Files\application</Filter>
+    </ClInclude>
+    <ClInclude Include="application\source\imgui_impl_win32.h">
+      <Filter>Source Files\application</Filter>
+    </ClInclude>
+    <ClInclude Include="application\source\platform.h">
+      <Filter>Source Files\application</Filter>
+    </ClInclude>
+    <ClInclude Include="application\source\renderer.h">
+      <Filter>Source Files\application</Filter>
+    </ClInclude>
+    <ClInclude Include="application\source\setup.h">
+      <Filter>Source Files\application</Filter>
+    </ClInclude>
+    <ClInclude Include="application\source\imgui_extra_keys.h">
+      <Filter>Source Files\application</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\widgets.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\builders.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utilities\drawing.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\json.hpp">
+      <Filter>Source Files\thirdparty\json</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\stb_image\stb_image.h">
+      <Filter>Source Files\thirdparty\stb</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\imgui_node_editor\imgui_canvas.h">
+      <Filter>Source Files\thirdparty\imgui_node_editor</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\imgui_node_editor\imgui_extra_math.h">
+      <Filter>Source Files\thirdparty\imgui_node_editor</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\imgui_node_editor\imgui_node_editor.h">
+      <Filter>Source Files\thirdparty\imgui_node_editor</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\imgui_node_editor\imgui_node_editor_internal.h">
+      <Filter>Source Files\thirdparty\imgui_node_editor</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\imgui_node_editor\crude_json.h">
+      <Filter>Source Files\thirdparty\imgui_node_editor</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\imgui_node_editor\imgui_bezier_math.h">
+      <Filter>Source Files\thirdparty\imgui_node_editor</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\imgui\imgui_internal.h">
+      <Filter>Source Files\thirdparty\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\imgui\ImGuiFileBrowser.h">
+      <Filter>Source Files\thirdparty\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\imgui\imstb_rectpack.h">
+      <Filter>Source Files\thirdparty\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\imgui\imstb_textedit.h">
+      <Filter>Source Files\thirdparty\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\imgui\imstb_truetype.h">
+      <Filter>Source Files\thirdparty\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\imgui\imconfig.h">
+      <Filter>Source Files\thirdparty\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\imgui\imgui.h">
+      <Filter>Source Files\thirdparty\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="thirdparty\imgui\Dirent\dirent.h">
+      <Filter>Source Files\thirdparty\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="editor_modules_list.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="application\source\config.h">
+      <Filter>Source Files\application</Filter>
+    </ClInclude>
+    <ClInclude Include="application\source\imgui_impl_dx11.h">
+      <Filter>Source Files\application</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="application\source\imgui_impl_win32.cpp">
+      <Filter>Source Files\application</Filter>
+    </ClCompile>
+    <ClCompile Include="application\source\platform_win32.cpp">
+      <Filter>Source Files\application</Filter>
+    </ClCompile>
+    <ClCompile Include="application\source\application.cpp">
+      <Filter>Source Files\application</Filter>
+    </ClCompile>
+    <ClCompile Include="application\source\entry_point.cpp">
+      <Filter>Source Files\application</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\widgets.cpp">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\builders.cpp">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="utilities\drawing.cpp">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\imgui_node_editor\imgui_node_editor.cpp">
+      <Filter>Source Files\thirdparty\imgui_node_editor</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\imgui_node_editor\imgui_node_editor_api.cpp">
+      <Filter>Source Files\thirdparty\imgui_node_editor</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\imgui_node_editor\crude_json.cpp">
+      <Filter>Source Files\thirdparty\imgui_node_editor</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\imgui_node_editor\imgui_canvas.cpp">
+      <Filter>Source Files\thirdparty\imgui_node_editor</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\imgui\imgui_draw.cpp">
+      <Filter>Source Files\thirdparty\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\imgui\imgui_tables.cpp">
+      <Filter>Source Files\thirdparty\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\imgui\imgui_widgets.cpp">
+      <Filter>Source Files\thirdparty\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\imgui\ImGuiFileBrowser.cpp">
+      <Filter>Source Files\thirdparty\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\imgui\imgui.cpp">
+      <Filter>Source Files\thirdparty\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="thirdparty\imgui\imgui_demo.cpp">
+      <Filter>Source Files\thirdparty\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="editor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="application\source\renderer_dx11.cpp">
+      <Filter>Source Files\application</Filter>
+    </ClCompile>
+    <ClCompile Include="application\source\imgui_impl_dx11.cpp">
+      <Filter>Source Files\application</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="application\support\Info.plist.in">
+      <Filter>Source Files\application\support</Filter>
+    </None>
+    <None Include="application\support\Resource.rc.in">
+      <Filter>Source Files\application\support</Filter>
+    </None>
+    <None Include="application\support\Icon.icns">
+      <Filter>Source Files\application\support</Filter>
+    </None>
+    <None Include="thirdparty\imgui_node_editor\imgui_extra_math.inl">
+      <Filter>Source Files\thirdparty\imgui_node_editor</Filter>
+    </None>
+    <None Include="thirdparty\imgui_node_editor\imgui_node_editor_internal.inl">
+      <Filter>Source Files\thirdparty\imgui_node_editor</Filter>
+    </None>
+    <None Include="thirdparty\imgui_node_editor\imgui_bezier_math.inl">
+      <Filter>Source Files\thirdparty\imgui_node_editor</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="application\support\Icon.png">
+      <Filter>Source Files\application\support</Filter>
+    </Image>
+    <Image Include="application\support\Icon.ico">
+      <Filter>Source Files\application\support</Filter>
+    </Image>
+  </ItemGroup>
+</Project>
