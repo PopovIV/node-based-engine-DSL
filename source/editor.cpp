@@ -413,17 +413,6 @@ struct my_any
     }
 };
 
-enum class PinType {
-    Flow,
-    Bool,
-    Int,
-    Float,
-    String,
-    Object,
-    Function,
-    Delegate,
-};
-
 enum class PinKind {
     Output,
     Input
@@ -853,8 +842,6 @@ struct Editor: public Application {
 
         ImGui::EndHorizontal();
 
-        ImGui::Checkbox("Show Ordinals", &m_ShowOrdinals);
-
         if (showStyleEditor) {
             ShowStyleEditor(&showStyleEditor);
         }
@@ -1018,16 +1005,6 @@ struct Editor: public Application {
         ImGui::Text("FPS: %.2f (%.2gms)", io.Framerate, io.Framerate ? 1000.0f / io.Framerate : 0.0f);
 
         ed::SetCurrentEditor(m_Editor);
-
-    # if 0
-        {
-            for (auto x = -io.DisplaySize.y; x < io.DisplaySize.x; x += 10.0f)
-            {
-                ImGui::GetWindowDrawList()->AddLine(ImVec2(x, 0), ImVec2(x + io.DisplaySize.y, io.DisplaySize.y),
-                    IM_COL32(255, 255, 0, 255));
-            }
-        }
-    # endif
 
         static ed::NodeId contextNodeId      = 0;
         static ed::LinkId contextLinkId      = 0;
@@ -1325,7 +1302,6 @@ struct Editor: public Application {
             ImGui::SetCursorScreenPos(cursorTopLeft);
         }
 
-    # if 1
         auto openPopupPosition = ImGui::GetMousePos();
         ed::Suspend();
         if (ed::ShowNodeContextMenu(&contextNodeId)) {
@@ -1470,47 +1446,8 @@ struct Editor: public Application {
         }
         ImGui::PopStyleVar();
         ed::Resume();
-    # endif
 
         ed::End();
-
-        auto editorMin = ImGui::GetItemRectMin();
-        auto editorMax = ImGui::GetItemRectMax();
-
-        if (m_ShowOrdinals) {
-            int nodeCount = ed::GetNodeCount();
-            std::vector<ed::NodeId> orderedNodeIds;
-            orderedNodeIds.resize(static_cast<size_t>(nodeCount));
-            ed::GetOrderedNodeIds(orderedNodeIds.data(), nodeCount);
-
-
-            auto drawList = ImGui::GetWindowDrawList();
-            drawList->PushClipRect(editorMin, editorMax);
-
-            int ordinal = 0;
-            for (auto& nodeId : orderedNodeIds) {
-                auto p0 = ed::GetNodePosition(nodeId);
-                auto p1 = p0 + ed::GetNodeSize(nodeId);
-                p0 = ed::CanvasToScreen(p0);
-                p1 = ed::CanvasToScreen(p1);
-
-
-                ImGuiTextBuffer builder;
-                builder.appendf("#%d", ordinal++);
-
-                auto textSize   = ImGui::CalcTextSize(builder.c_str());
-                auto padding    = ImVec2(2.0f, 2.0f);
-                auto widgetSize = textSize + padding * 2;
-
-                auto widgetPosition = ImVec2(p1.x, p0.y) + ImVec2(0.0f, -widgetSize.y);
-
-                drawList->AddRectFilled(widgetPosition, widgetPosition + widgetSize, IM_COL32(100, 80, 80, 190), 3.0f, ImDrawFlags_RoundCornersAll);
-                drawList->AddRect(widgetPosition, widgetPosition + widgetSize, IM_COL32(200, 160, 160, 190), 3.0f, ImDrawFlags_RoundCornersAll);
-                drawList->AddText(widgetPosition + padding, IM_COL32(255, 255, 255, 255), builder.c_str());
-            }
-
-            drawList->PopClipRect();
-        }
     }
 
     void SpawnNodeFromLibrary(BlueprintLibraryNode node, unsigned int id) {
@@ -1728,7 +1665,6 @@ struct Editor: public Application {
     ImTextureID          m_RestoreIcon = nullptr;
     const float          m_TouchTime = 1.0f;
     std::map<ed::NodeId, float, NodeIdLess> m_NodeTouchTime;
-    bool                 m_ShowOrdinals = false;
 };
 
 int Main(int argc, char** argv)
