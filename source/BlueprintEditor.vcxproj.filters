@@ -37,6 +37,12 @@
     <Filter Include="Source Files\utils">
       <UniqueIdentifier>{d91c8869-f723-43d4-b9e3-42e30c6fb2c6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\math">
+      <UniqueIdentifier>{491cc703-cdb4-48a0-8b9b-fe4b2ad759f2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\structs">
+      <UniqueIdentifier>{67b250d9-bfa0-4794-94af-0e3075ceaae5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="application\include\application.h">
@@ -122,6 +128,21 @@
     </ClInclude>
     <ClInclude Include="application\source\imgui_impl_dx11.h">
       <Filter>Source Files\application</Filter>
+    </ClInclude>
+    <ClInclude Include="math\mth.h">
+      <Filter>Source Files\math</Filter>
+    </ClInclude>
+    <ClInclude Include="math\my_any.h">
+      <Filter>Source Files\math</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\pin.h">
+      <Filter>Source Files\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\link.h">
+      <Filter>Source Files\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\node.h">
+      <Filter>Source Files\structs</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
