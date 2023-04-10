@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31410.357
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BlueprintEditor", "BlueprintEditor.vcxproj", "{549E0C0D-84E8-44DC-B2B0-87ACD5BF3DE4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{549E0C0D-84E8-44DC-B2B0-87ACD5BF3DE4}.Debug|x64.ActiveCfg = Debug|x64
+		{549E0C0D-84E8-44DC-B2B0-87ACD5BF3DE4}.Debug|x64.Build.0 = Debug|x64
+		{549E0C0D-84E8-44DC-B2B0-87ACD5BF3DE4}.Debug|x86.ActiveCfg = Debug|Win32
+		{549E0C0D-84E8-44DC-B2B0-87ACD5BF3DE4}.Debug|x86.Build.0 = Debug|Win32
+		{549E0C0D-84E8-44DC-B2B0-87ACD5BF3DE4}.Release|x64.ActiveCfg = Release|x64
+		{549E0C0D-84E8-44DC-B2B0-87ACD5BF3DE4}.Release|x64.Build.0 = Release|x64
+		{549E0C0D-84E8-44DC-B2B0-87ACD5BF3DE4}.Release|x86.ActiveCfg = Release|Win32
+		{549E0C0D-84E8-44DC-B2B0-87ACD5BF3DE4}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {770B0FDC-3224-45D6-9C06-DFBA07E46832}
+	EndGlobalSection
+EndGlobal
