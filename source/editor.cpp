@@ -2,7 +2,6 @@
 #include "editor_modules_list.h"
 #include "utilities/builders.h"
 #include "utilities/widgets.h"
-
 #include "structs/pin.h"
 #include "structs/node.h"
 #include "structs/link.h"
@@ -64,15 +63,12 @@ static bool Splitter(bool split_vertically, float thickness, float* size1, float
     return SplitterBehavior(bb, id, split_vertically ? ImGuiAxis_X : ImGuiAxis_Y, size1, size2, min_size1, min_size2, 0.0f);
 }
 
+// Main editor class
 struct Editor: public Application {
     using Application::Application;
 
     int GetNextId() {
         return m_NextId++;
-    }
-
-    ed::LinkId GetNextLinkId() {
-        return ed::LinkId(GetNextId());
     }
 
     void TouchNode(ed::NodeId id) {
@@ -241,6 +237,7 @@ struct Editor: public Application {
         }
     }
 
+    // Function to get Node color based on Node type
     ImColor GetNodeColor(EditorNodeTypes type) {
         switch (type) {
             default:                                      return ImColor(255, 255, 255);
@@ -251,6 +248,7 @@ struct Editor: public Application {
         }
     };
 
+    // Function to select Pin icon based on args type
     void DrawPinIcon(const Pin& pin, bool connected, int alpha) {
         IconType iconType;
         ImColor color = PinColorChoser[pin.Type];
@@ -342,6 +340,10 @@ struct Editor: public Application {
 
         paneWidth = ImGui::GetContentRegionAvail().x;
 
+        ImGui::BeginHorizontal("Scene name", ImVec2(paneWidth, 0));
+        ImGui::InputText("Scene name", sceneName, IM_ARRAYSIZE(sceneName));
+        ImGui::EndHorizontal();
+
         static bool showStyleEditor = false;
         ImGui::BeginHorizontal("Style Editor", ImVec2(paneWidth, 0));
         ImGui::Spring(0.0f, 0.0f);
@@ -380,6 +382,24 @@ struct Editor: public Application {
         if (file_dialog.showFileDialog("Save File", imgui_addons::ImGuiFileBrowser::DialogMode::SAVE, ImVec2(700, 310), ".json"))
         {
             SceneToJSon(file_dialog.selected_path);
+        }
+
+        if (ImGui::BeginPopupModal("Json file error"))
+        {
+            ImGui::Text("Could not open json file");
+            if (ImGui::Button("Ok", ImVec2(120, 0))) { 
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+
+        if (ImGui::BeginPopupModal("Json version error"))
+        {
+            ImGui::Text("Incorrect json version");
+            if (ImGui::Button("Ok", ImVec2(120, 0))) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
         }
 
         ImGui::EndHorizontal();
@@ -887,7 +907,6 @@ struct Editor: public Application {
 
         if (ImGui::BeginPopup("Create New Node")) {
             auto newNodePostion = openPopupPosition;
-            ImGui::SetCursorScreenPos(ImGui::GetMousePosOnOpeningCurrentPopup());
 
             Node* node = nullptr;
             for (auto& v : BlueprintLibrary) {
@@ -950,6 +969,8 @@ struct Editor: public Application {
         ed::End();
     }
 
+    // Function to create new node with correct input/outputs based on node from editor_modules_list.h
+    // Used in json loading and basic editor node creation
     void SpawnNodeFromLibrary(BlueprintLibraryNode node, unsigned int id) {
         m_Nodes.emplace_back(id, node, GetNodeColor(node.EngineType));
         if (node.EngineType == EditorNodeTypes::editor_node_event) {
@@ -972,16 +993,12 @@ struct Editor: public Application {
         }
     }
 
+    // Function to save current file to json file
     void SceneToJSon(std::string fileName) {
         std::ofstream file(fileName);
         if (!file.is_open()) {
-            if (ImGui::BeginPopup("Error pop up", ImGuiWindowFlags_MenuBar)) {
-                ImGui::Text("Could not save json file");
-                if (ImGui::Button("This is a dummy button..")) {
-                    ImGui::EndPopup();
-                }
-                return;
-            }
+            ImGui::OpenPopup("Json file error");
+            return;
         }
 
         for (auto& node : m_Nodes) {
@@ -992,7 +1009,7 @@ struct Editor: public Application {
         json data;
 
         data["version"] = MAX_SUPPORTED_VERSION;
-        data["name"] = "scene";
+        data["name"] = sceneName;
 
         // Fill commands array here
         json commands = json(m_Nodes.size(), nullptr);
@@ -1055,8 +1072,8 @@ struct Editor: public Application {
                 } 
                 else {
                     for (auto& link : m_Links) {
-                        if (link.EndPinID == input.ID) {
-                            j_input["slots"].emplace_back(link.StartPinID.Get());
+                        if (link.StartPinID == input.ID) {
+                            j_input["slots"].emplace_back(link.EndPinID.Get());
                         }
                     }
                 }
@@ -1071,22 +1088,27 @@ struct Editor: public Application {
         file << std::setw(4) << data << std::endl;
     }
 
+    // Function to parse json file into nodes
     void ParseJson(std::string fileName) {
-        m_Nodes.clear();
-        m_Links.clear();
-
         std::ifstream file(fileName);
         if (!file.is_open()) {
-            if (ImGui::BeginPopup("Error pop up", ImGuiWindowFlags_MenuBar)) {
-                ImGui::Text("Could not open json file");
-                if (ImGui::Button("OK")) {
-                    ImGui::EndPopup();
-                }
-                return;
-            }
+            ImGui::OpenPopup("Json file error");
+            return;
         }
 
         json data = json::parse(file);
+
+        if (data["version"] != MAX_SUPPORTED_VERSION) {
+            ImGui::OpenPopup("Json version error");
+            return;
+        }
+
+        m_Nodes.clear();
+        m_Links.clear();
+
+        std::string str = data["name"];
+        strcpy_s(sceneName, str.c_str());
+
         json commands = data["commands"];
         // Spawn nodes
         std::vector<Node> commandNodeMap;
@@ -1110,9 +1132,10 @@ struct Editor: public Application {
         for (int i = 0; i < commands.size(); i++) {
             json nextNodes = commands[i]["next_nodes"];
             if (nextNodes[0] != ZERO_CODE) {
+                int pinIndex = 0;
                 for (auto& nodeId : nextNodes) {
-                    m_Links.emplace_back(Link(GetNextId(), commandNodeMap[i].Outputs[0].ID, commandNodeMap[nodeId].Inputs[0].ID));
-                    m_Links.back().Color = PinColorChoser[commandNodeMap[i].Outputs[0].Type];
+                    m_Links.emplace_back(Link(GetNextId(), commandNodeMap[i].Outputs[pinIndex].ID, commandNodeMap[nodeId].Inputs[0].ID));
+                    m_Links.back().Color = PinColorChoser[commandNodeMap[i].Outputs[pinIndex++].Type];
                 }
             }
 
@@ -1140,9 +1163,10 @@ struct Editor: public Application {
 
         }
         BuildNodes();
-
     }
 
+    // Function to spawn Node by index in editor_modules_list.h
+    // Used in json loading
     BlueprintLibraryNode* SpawnNodeById(int id) {
         for (auto& f : InsertOrder) {
             if ((id -(int)BlueprintLibrary[f].size()) >= 0) {
@@ -1156,15 +1180,16 @@ struct Editor: public Application {
         return nullptr;
     }
 
-    int                  m_NextId = 1;
-    const int            m_PinIconSize = 24;
-    std::vector<Node>    m_Nodes;
-    std::vector<Link>    m_Links;
-    ImTextureID          m_HeaderBackground = nullptr;
-    ImTextureID          m_SaveIcon = nullptr;
-    ImTextureID          m_RestoreIcon = nullptr;
-    const float          m_TouchTime = 1.0f;
-    std::map<ed::NodeId, float, NodeIdLess> m_NodeTouchTime;
+    int                  m_NextId = 1;                        // Variable to keep track of ids
+    const int            m_PinIconSize = 24;                  // Size of pin's size
+    std::vector<Node>    m_Nodes;                             // Vector of all Nodes
+    std::vector<Link>    m_Links;                             // Vector of all Links
+    ImTextureID          m_HeaderBackground = nullptr;        // XZ
+    ImTextureID          m_SaveIcon = nullptr;                // XZ
+    ImTextureID          m_RestoreIcon = nullptr;             // XZ
+    const float          m_TouchTime = 1.0f;                  // XZ
+    std::map<ed::NodeId, float, NodeIdLess> m_NodeTouchTime;  // XZ
+    char sceneName[128] = "scene";                            // Name of the scene
 };
 
 int Main(int argc, char** argv)
